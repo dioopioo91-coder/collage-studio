@@ -609,21 +609,37 @@ $('#btn-clear-lib').addEventListener('click', async () => {
   library=[]; await dbClear(); renderLibrary(); renderCollage();
 });
 
-/* ---- EXPORT 8K ---- */
-$('#btn-export').addEventListener('click', exportCollage);
-$('#btn-close-modal').addEventListener('click', () => { exportModal.hidden = true; });
+/* ---- EXPORT MODAL & RENDERING ---- */
+const exportFormStep     = $('#export-form-step');
+const exportProgressStep = $('#export-progress-step');
 
-async function exportCollage() {
+$('#btn-export').addEventListener('click', () => {
   if (canvasCells.length === 0) return;
   exportModal.hidden = false;
+  exportFormStep.hidden = false;
+  exportProgressStep.hidden = true;
+});
+
+$('#btn-modal-x').addEventListener('click', () => { exportModal.hidden = true; });
+$('#btn-close-modal').addEventListener('click', () => { exportModal.hidden = true; });
+
+$('#btn-start-export').addEventListener('click', () => {
+  const resPreset = parseInt($('input[name="res-preset"]:checked').value) || 7680;
+  const format = $('input[name="export-fmt"]:checked').value || 'image/jpeg';
+  exportFormStep.hidden = true;
+  exportProgressStep.hidden = false;
   $('#btn-close-modal').hidden = true;
+  runExportProcess(resPreset, format);
+});
+
+async function runExportProcess(baseW, mimeType) {
   exportProg.style.width = '0%';
   exportStatus.textContent = 'Preparing canvas…';
   await sleep(50);
 
   const ratio = getRatio();
-  let targetW = 7680, targetH = Math.round(targetW / ratio);
-  if (targetW * targetH > 7680*4320) { targetH=4320; targetW=Math.round(targetH*ratio); }
+  let targetW = baseW;
+  let targetH = Math.round(targetW / ratio);
 
   const canvas = document.createElement('canvas');
   canvas.width = targetW; canvas.height = targetH;
@@ -693,21 +709,29 @@ async function exportCollage() {
   }
 
   exportProg.style.width = '90%';
-  exportStatus.textContent = 'Compressing…';
+  exportStatus.textContent = 'Generating file…';
   await sleep(30);
 
-  let quality = 0.95, blob;
-  do {
-    blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
-    if (blob.size > 10*1024*1024) quality -= 0.05; else break;
-  } while (quality > 0.3);
+  let blob, ext;
+  if (mimeType === 'image/png') {
+    ext = 'png';
+    blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  } else {
+    ext = 'jpg';
+    let quality = 0.95;
+    do {
+      blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+      if (blob.size > 15*1024*1024) quality -= 0.05; else break;
+    } while (quality > 0.3);
+  }
 
+  const resName = baseW >= 15000 ? '16K' : baseW >= 9000 ? '10K' : baseW >= 7000 ? '8K' : '4K';
   exportProg.style.width = '100%';
-  exportStatus.textContent = `Done! ${targetW}×${targetH} — ${(blob.size/1024/1024).toFixed(2)} MB`;
+  exportStatus.textContent = `Done! ${targetW}×${targetH} (${resName}) — ${(blob.size/1024/1024).toFixed(2)} MB`;
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `collage_${targetW}x${targetH}.jpg`;
+  a.href = url; a.download = `collage_${resName}_${targetW}x${targetH}.${ext}`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   $('#btn-close-modal').hidden = false;

@@ -67,7 +67,7 @@
       </div>
       <div class="navbar-right">
         <button class="btn btn-secondary" id="btn-clear-canvas">Clear</button>
-        <button class="btn btn-primary" id="btn-export">Export 8K</button>
+        <button class="btn btn-primary" id="btn-export">Export</button>
       </div>
     </header>
 
@@ -128,12 +128,41 @@
     </div>
   </div>
 
+  <!-- EXPORT OPTIONS MODAL -->
   <div class="modal-overlay" id="export-modal" hidden>
     <div class="figma-modal">
-      <h2>Exporting 8K Collage</h2>
-      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="export-progress"></div></div>
-      <p class="modal-status" id="export-status">Building...</p>
-      <button class="btn btn-primary btn-full" id="btn-close-modal" hidden>Done</button>
+      <div class="modal-header">
+        <h2>Export Collage</h2>
+        <button class="icon-btn" id="btn-modal-x">×</button>
+      </div>
+
+      <div class="export-form" id="export-form-step">
+        <div class="form-group">
+          <label class="form-label">RESOLUTION</label>
+          <div class="preset-grid">
+            <label class="preset-btn"><input type="radio" name="res-preset" value="3840"> <span>4K</span></label>
+            <label class="preset-btn"><input type="radio" name="res-preset" value="7680" checked> <span>8K</span></label>
+            <label class="preset-btn"><input type="radio" name="res-preset" value="9600"> <span>10K</span></label>
+            <label class="preset-btn"><input type="radio" name="res-preset" value="15360"> <span>16K</span></label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">FORMAT</label>
+          <div class="format-toggle">
+            <label class="format-btn"><input type="radio" name="export-fmt" value="image/jpeg" checked> <span>JPEG</span></label>
+            <label class="format-btn"><input type="radio" name="export-fmt" value="image/png"> <span>PNG</span></label>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full btn-large" id="btn-start-export">Start Download</button>
+      </div>
+
+      <div class="export-progress-step" id="export-progress-step" hidden>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="export-progress"></div></div>
+        <p class="modal-status" id="export-status">Building...</p>
+        <button class="btn btn-primary btn-full" id="btn-close-modal" hidden>Done</button>
+      </div>
     </div>
   </div>
 
