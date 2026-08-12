@@ -58,24 +58,38 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .color-picker{width:24px;height:24px;border:2px solid var(--border);border-radius:4px;padding:0;cursor:pointer;background:none;appearance:none;-webkit-appearance:none}
 .color-picker::-webkit-color-swatch-wrapper{padding:0}.color-picker::-webkit-color-swatch{border:none;border-radius:2px}
 
-/* CELL — transparent positioning container */
-.cell{position:absolute;cursor:pointer;user-select:none}
+/* CELL — exact positioning container (no invisible margin) */
+.cell{position:absolute;overflow:visible;user-select:none;box-sizing:border-box}
 .cell.dragging{opacity:.3}
 
-/* FRAME — wraps only the actual image bounds, has border + tag */
-.cell-frame{position:absolute;overflow:hidden;border-radius:10px;transition:box-shadow .15s}
-.cell:hover .cell-frame{box-shadow:0 0 12px rgba(99,102,241,.4)}
-.cell.selected .cell-frame{box-shadow:0 0 20px rgba(99,102,241,.6)}
-.cell.drag-target .cell-frame{outline:3px dashed var(--accent);outline-offset:2px}
+/* CELL INNER — visible border + frame */
+.cell-inner{position:relative;width:100%;height:100%;overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;transition:box-shadow .15s}
+.cell:hover .cell-inner{box-shadow:0 0 14px rgba(99,102,241,.4)}
+.cell.selected .cell-inner{box-shadow:0 0 24px rgba(99,102,241,.65);outline:2px solid var(--accent);outline-offset:1px}
+.cell.drag-target .cell-inner{outline:3px dashed var(--accent);outline-offset:2px}
 
-/* TAG — header bar ABOVE the image (static flow, not absolute) */
-.cell-tag{display:block;width:100%;font-weight:900;font-family:var(--font-sans);text-align:center;letter-spacing:2px;z-index:3;box-sizing:border-box}
+/* TAG — header bar ABOVE image (drag here to move freely) */
+.cell-tag{display:block;width:100%;font-weight:900;font-family:var(--font-sans);text-align:center;letter-spacing:2px;z-index:3;box-sizing:border-box;flex-shrink:0;cursor:grab}
+.cell-tag:active{cursor:grabbing}
 
-/* IMAGE — below tag, width fills frame, height set by JS */
-.cell-img{display:block;width:100%;object-fit:contain}
+/* IMAGE — below tag (drag here to swap images) */
+.cell-img{display:block;width:100%;flex:1;min-height:0;object-fit:contain;cursor:move}
+
+/* RESIZE HANDLES (Figma style 8 points) */
+.resize-handle{position:absolute;width:10px;height:10px;background:#ffffff;border:2px solid var(--accent);border-radius:2px;z-index:20;opacity:0;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.cell:hover .resize-handle,.cell.selected .resize-handle{opacity:1}
+
+.handle-nw{top:-5px;left:-5px;cursor:nwse-resize}
+.handle-n{top:-5px;left:calc(50% - 5px);cursor:ns-resize}
+.handle-ne{top:-5px;right:-5px;cursor:nesw-resize}
+.handle-w{top:calc(50% - 5px);left:-5px;cursor:ew-resize}
+.handle-e{top:calc(50% - 5px);right:-5px;cursor:ew-resize}
+.handle-sw{bottom:-5px;left:-5px;cursor:nesw-resize}
+.handle-s{bottom:-5px;left:calc(50% - 5px);cursor:ns-resize}
+.handle-se{bottom:-5px;right:-5px;cursor:nwse-resize}
 
 /* CELL CONTROLS */
-.cell-controls{position:absolute;bottom:6px;right:6px;display:flex;gap:3px;z-index:5;opacity:0;transition:opacity .15s}
+.cell-controls{position:absolute;bottom:6px;right:6px;display:flex;gap:3px;z-index:15;opacity:0;transition:opacity .15s}
 .cell:hover .cell-controls{opacity:1}
 .cell-btn{width:22px;height:22px;border-radius:4px;background:rgba(0,0,0,.8);color:#fff;border:1px solid rgba(255,255,255,.15);font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .cell-btn:hover{background:var(--accent)}.cell-btn.remove:hover{background:var(--red)}
