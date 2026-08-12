@@ -23,8 +23,20 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .tool-label{font-size:10px;font-weight:700;color:var(--text-sec);letter-spacing:.08em;font-family:var(--font-mono)}
 .tool-divider{width:1px;height:18px;background:var(--border)}
 .navbar-center select{background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:5px;padding:3px 20px 3px 8px;font-size:12px;font-weight:600;font-family:var(--font-sans);outline:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
-.figma-slider{width:60px;height:3px;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
-.figma-slider::-webkit-slider-thumb{appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-topbar);cursor:pointer}
+/* THICK MOBILE-STYLE SLIDERS */
+.figma-slider{width:70px;height:12px;appearance:none;-webkit-appearance:none;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);outline:none;cursor:pointer;padding:0;margin:0;transition:border-color .15s}
+.figma-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#ffffff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s,background .15s}
+.figma-slider::-webkit-slider-thumb:hover,.figma-slider::-webkit-slider-thumb:active{transform:scale(1.25);background:var(--accent-light)}
+
+.figma-slider.slider-red::-webkit-slider-thumb{border-color:var(--red)}
+.figma-slider.slider-green::-webkit-slider-thumb{border-color:var(--green)}
+.figma-slider.slider-blue::-webkit-slider-thumb{border-color:var(--blue)}
+
+/* EDITABLE NUMBER INPUTS */
+.val-num-input{width:46px;height:24px;background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:700;text-align:center;outline:none;padding:0 2px;transition:border-color .15s,background .15s}
+.val-num-input:focus,.val-num-input:hover{border-color:var(--accent);background:#1e1e28}
+.val-num-input::-webkit-inner-spin-button,.val-num-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.val-num-input[type=number]{-moz-appearance:textfield}
 .tool-val{font-size:10px;font-weight:600;font-family:var(--font-mono);color:var(--text-muted);min-width:28px}
 
 /* BUTTONS */

@@ -68,24 +68,24 @@ const exportProg  = $('#export-progress');
 const exportStatus= $('#export-status');
 
 const sGap     = $('#collage-gap');
+const nGap     = $('#gap-num');
 const sRadius  = $('#border-radius');
+const nRadius  = $('#radius-num');
 const sTagSize = $('#tag-size');
+const nTagSize = $('#tag-size-num');
 const sRatio   = $('#aspect-ratio');
-const vGap     = $('#gap-val');
-const vRadius  = $('#radius-val');
-const vTagSize = $('#tag-size-val');
 
 const sFrameColor  = $('#frame-color');
 const vFrameColor  = $('#frame-color-val');
 const sFrameStroke = $('#frame-stroke');
-const vFrameStroke = $('#frame-stroke-val');
+const nFrameStroke = $('#frame-stroke-num');
 
 const adjSliders = {
-  brightness: { el: $('#adj-brightness'), val: $('#adj-brightness-val') },
-  contrast:   { el: $('#adj-contrast'),   val: $('#adj-contrast-val') },
-  r:          { el: $('#adj-r'),          val: $('#adj-r-val') },
-  g:          { el: $('#adj-g'),          val: $('#adj-g-val') },
-  b:          { el: $('#adj-b'),          val: $('#adj-b-val') },
+  brightness: { el: $('#adj-brightness'), num: $('#adj-brightness-num') },
+  contrast:   { el: $('#adj-contrast'),   num: $('#adj-contrast-num') },
+  r:          { el: $('#adj-r'),          num: $('#adj-r-num') },
+  g:          { el: $('#adj-g'),          num: $('#adj-g-num') },
+  b:          { el: $('#adj-b'),          num: $('#adj-b-num') },
 };
 
 let gap     = 10;
@@ -484,6 +484,21 @@ function selectCell(idx) {
   renderCollage();
 }
 
+function bindSliderAndNum(sliderEl, numEl, onChange) {
+  if (!sliderEl || !numEl) return;
+  sliderEl.addEventListener('input', () => {
+    numEl.value = sliderEl.value;
+    onChange(parseInt(sliderEl.value));
+  });
+  numEl.addEventListener('input', () => {
+    let val = parseInt(numEl.value) || 0;
+    val = Math.max(parseInt(sliderEl.min), Math.min(parseInt(sliderEl.max), val));
+    sliderEl.value = val;
+    numEl.value = val;
+    onChange(val);
+  });
+}
+
 /* ---- INSPECTOR ---- */
 function showInspector(idx) {
   const cell = canvasCells[idx];
@@ -492,17 +507,19 @@ function showInspector(idx) {
   $('#adj-title').textContent = '@IMAGE'+(idx+1);
   for (const key of Object.keys(adjSliders)) {
     adjSliders[key].el.value = cell.adj[key];
-    adjSliders[key].val.textContent = cell.adj[key]+'%';
+    adjSliders[key].num.value = cell.adj[key];
   }
 }
 
 function hideInspector() { adjPanel.hidden = true; }
 
-function updateAdj(key) {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  canvasCells[selectedIdx].adj[key] = parseInt(adjSliders[key].el.value);
-  adjSliders[key].val.textContent = adjSliders[key].el.value+'%';
-  renderCollage();
+for (const key of Object.keys(adjSliders)) {
+  const { el, num } = adjSliders[key];
+  bindSliderAndNum(el, num, val => {
+    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+    canvasCells[selectedIdx].adj[key] = val;
+    renderCollage();
+  });
 }
 
 $('#btn-reset-adj').addEventListener('click', () => {
@@ -513,85 +530,14 @@ $('#btn-reset-adj').addEventListener('click', () => {
 });
 $('#btn-remove-cell').addEventListener('click', () => { if (selectedIdx >= 0) removeCell(selectedIdx); });
 $('#btn-deselect').addEventListener('click', () => { selectedIdx=-1; hideInspector(); renderCollage(); });
-for (const key of Object.keys(adjSliders)) adjSliders[key].el.addEventListener('input', () => updateAdj(key));
 
-/* ---- LIBRARY ---- */
-function renderLibrary() {
-  libGrid.innerHTML = '';
-  libEmpty.style.display = library.length === 0 ? 'block' : 'none';
-  libCount.textContent = library.length;
-  for (const item of library) {
-    const card = document.createElement('div');
-    card.className = 'lib-card';
-    const img = document.createElement('img');
-    img.src = item.thumbUrl; img.loading = 'lazy';
-    card.appendChild(img);
-    const del = document.createElement('button');
-    del.className = 'lib-del-btn'; del.textContent = '✕';
-    del.addEventListener('click', e => { e.stopPropagation(); removeFromLibrary(item.id); });
-    card.appendChild(del);
-    card.addEventListener('click', () => addToCollage(item.id));
-    libGrid.appendChild(card);
-  }
-}
-
-function addToCollage(assetId) {
-  canvasCells.push({ assetId, adj: defaultAdj(), fx:0, fy:0, fw:0, fh:0 });
-  redistributeLayout();
-  renderCollage();
-}
-
-async function removeFromLibrary(id) {
-  canvasCells = canvasCells.filter(c => c.assetId !== id);
-  if (selectedIdx >= canvasCells.length) { selectedIdx = -1; hideInspector(); }
-  const item = library.find(a => a.id === id);
-  if (item && item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
-  library = library.filter(a => a.id !== id);
-  await dbDel(id);
-  redistributeLayout();
-  renderLibrary();
-  renderCollage();
-}
-
-/* ---- FILE UPLOAD ---- */
-async function handleFiles(files) {
-  for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    const id = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
-    const blob = file;
-    const thumbUrl = URL.createObjectURL(blob);
-    const dims = await getImageDims(thumbUrl);
-    library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
-    try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
-  }
-  renderLibrary();
-}
-
-fileInput.addEventListener('change', e => {
-  const files = Array.from(e.target.files);
-  fileInput.value = '';
-  handleFiles(files);
-});
-$('#btn-upload').addEventListener('click', () => fileInput.click());
-
-/* ---- DRAG & DROP FILES ---- */
-viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
-viewport.addEventListener('dragleave', () => frame.classList.remove('drag-over'));
-viewport.addEventListener('drop', e => {
-  e.preventDefault(); frame.classList.remove('drag-over');
-  if (e.dataTransfer.files.length > 0) {
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  }
-});
-
-/* ---- TOOLBAR ---- */
-sGap.addEventListener('input', () => { gap=parseInt(sGap.value); vGap.textContent=gap+'px'; renderCollage(); });
-sRadius.addEventListener('input', () => { radius=parseInt(sRadius.value); vRadius.textContent=radius+'px'; renderCollage(); });
-sTagSize.addEventListener('input', () => { tagSize=parseInt(sTagSize.value); vTagSize.textContent=tagSize+'px'; renderCollage(); });
+/* ---- TOOLBAR SLIDERS ---- */
+bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
+bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
+bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
+bindSliderAndNum(sFrameStroke, nFrameStroke, val => { strokeWidth = val; renderCollage(); });
 sRatio.addEventListener('change', () => { updateFrameSize(); renderCollage(); });
 sFrameColor.addEventListener('input', () => { frameColor=sFrameColor.value; vFrameColor.textContent=frameColor.toUpperCase(); renderCollage(); });
-sFrameStroke.addEventListener('input', () => { strokeWidth=parseInt(sFrameStroke.value); vFrameStroke.textContent=strokeWidth+'px'; renderCollage(); });
 
 $('#btn-clear-canvas').addEventListener('click', () => { canvasCells=[]; selectedIdx=-1; hideInspector(); renderCollage(); });
 $('#btn-add-all').addEventListener('click', () => {

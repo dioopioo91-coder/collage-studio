@@ -38,19 +38,19 @@
         <div class="tool-item">
           <span class="tool-label">GAP</span>
           <input type="range" id="collage-gap" min="0" max="40" value="10" class="figma-slider">
-          <span class="tool-val" id="gap-val">10px</span>
+          <input type="number" id="gap-num" min="0" max="40" value="10" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
           <span class="tool-label">RADIUS</span>
           <input type="range" id="border-radius" min="0" max="36" value="10" class="figma-slider">
-          <span class="tool-val" id="radius-val">10px</span>
+          <input type="number" id="radius-num" min="0" max="36" value="10" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
           <span class="tool-label">TAG</span>
           <input type="range" id="tag-size" min="12" max="32" value="18" class="figma-slider">
-          <span class="tool-val" id="tag-size-val">18px</span>
+          <input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
@@ -62,7 +62,7 @@
         <div class="tool-item">
           <span class="tool-label">STROKE</span>
           <input type="range" id="frame-stroke" min="1" max="8" value="3" class="figma-slider">
-          <span class="tool-val" id="frame-stroke-val">3px</span>
+          <input type="number" id="frame-stroke-num" min="1" max="8" value="3" class="val-num-input">
         </div>
       </div>
       <div class="navbar-right">
@@ -110,13 +110,13 @@
           </div>
           <div class="inspector-controls">
             <div class="prop-group">
-              <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><span class="val-badge" id="adj-brightness-val">100%</span></div></div>
-              <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><span class="val-badge" id="adj-contrast-val">100%</span></div></div>
+              <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+              <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
             </div>
             <div class="prop-group">
-              <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><span class="val-badge" id="adj-r-val">100%</span></div></div>
-              <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><span class="val-badge" id="adj-g-val">100%</span></div></div>
-              <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><span class="val-badge" id="adj-b-val">100%</span></div></div>
+              <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+              <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+              <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
             </div>
             <div class="prop-actions">
               <button class="btn btn-secondary btn-full" id="btn-reset-adj">Reset</button>
