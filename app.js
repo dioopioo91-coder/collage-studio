@@ -330,6 +330,7 @@ collage.addEventListener('pointerdown', e => {
     interaction.mode = 'swap';
   }
 
+  cellEl.classList.add('active-drag');
   collage.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
@@ -459,7 +460,10 @@ collage.addEventListener('pointerup', e => {
     selectCell(idx);
   }
 
-  $$('.cell', collage).forEach(el => el.classList.remove('drag-target'));
+  $$('.cell', collage).forEach(el => {
+    el.classList.remove('drag-target');
+    el.classList.remove('active-drag');
+  });
   $$('.cell-img', collage).forEach(el => el.classList.remove('swapping-img'));
 });
 

@@ -58,8 +58,10 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .color-picker{width:24px;height:24px;border:2px solid var(--border);border-radius:4px;padding:0;cursor:pointer;background:none;appearance:none;-webkit-appearance:none}
 .color-picker::-webkit-color-swatch-wrapper{padding:0}.color-picker::-webkit-color-swatch{border:none;border-radius:2px}
 
-/* CELL — exact positioning container (no invisible margin) */
-.cell{position:absolute;overflow:visible;user-select:none;box-sizing:border-box}
+/* CELL — exact positioning container with isolated stacking context */
+.cell{position:absolute;overflow:visible;user-select:none;box-sizing:border-box;isolation:isolate;z-index:1}
+.cell.selected{z-index:50}
+.cell.active-drag{z-index:1000 !important}
 .cell.dragging{opacity:.3}
 
 /* CELL INNER — visible border + frame */
