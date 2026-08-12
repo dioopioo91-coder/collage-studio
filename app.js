@@ -1,6 +1,6 @@
 /* ============================================================
    Collage Studio — Application Logic
-   FREE-FORM EDGE-TO-EDGE LAYOUT WITH FIGMA-STYLE 8-POINT RESIZE HANDLES
+   PROPORTIONAL CORNER-ONLY RESIZING & ZERO-VOID EDGE-TO-EDGE FRAMES
    ============================================================ */
 'use strict';
 
@@ -97,7 +97,7 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- AUTO LAYOUT (Initial Placement) ---- */
+/* ---- AUTO LAYOUT (Exact Aspect Ratio Fitting) ---- */
 function computeLayout(n) {
   if (n === 0) return [];
   if (n === 1) return [{ x:0, y:0, w:1, h:1 }];
@@ -120,18 +120,40 @@ function computeLayout(n) {
 }
 
 function redistributeLayout() {
-  const rects = computeLayout(canvasCells.length);
+  const n = canvasCells.length;
+  if (n === 0) return;
+  const rects = computeLayout(n);
   const fw = frame.offsetWidth || 1000;
   const fh = frame.offsetHeight || 800;
-  const gapFx = gap / 2 / fw;
-  const gapFy = gap / 2 / fh;
+  const tagH = Math.round(tagSize * 1.6 + 6);
 
-  for (let i = 0; i < canvasCells.length; i++) {
+  for (let i = 0; i < n; i++) {
+    const cell = canvasCells[i];
+    const asset = library.find(a => a.id === cell.assetId);
+    const ir = asset ? (asset.natW / asset.natH) : 1;
     const r = rects[i];
-    canvasCells[i].fx = Math.max(0, r.x + gapFx);
-    canvasCells[i].fy = Math.max(0, r.y + gapFy);
-    canvasCells[i].fw = Math.min(1, r.w - gapFx * 2);
-    canvasCells[i].fh = Math.min(1, r.h - gapFy * 2);
+
+    const maxPw = r.w * fw - gap;
+    const maxPh = r.h * fh - gap;
+    const maxImgH = maxPh - tagH;
+
+    let pw, imgH, ph;
+    if (maxPw / maxImgH > ir) {
+      imgH = Math.max(20, maxImgH);
+      pw = Math.max(40, imgH * ir);
+    } else {
+      pw = Math.max(40, maxPw);
+      imgH = Math.max(20, pw / ir);
+    }
+    ph = tagH + imgH;
+
+    const ox = r.x * fw + (r.w * fw - pw) / 2;
+    const oy = r.y * fh + (r.h * fh - ph) / 2;
+
+    cell.fx = Math.max(0, ox / fw);
+    cell.fy = Math.max(0, oy / fh);
+    cell.fw = Math.min(1, pw / fw);
+    cell.fh = Math.min(1, ph / fh);
   }
 }
 
@@ -178,21 +200,27 @@ function renderCollage() {
   const fw = frame.offsetWidth;
   const fh = frame.offsetHeight;
   const contrastColor = getContrastColor(frameColor);
+  const tagH = Math.round(tagSize * 1.6 + 6);
 
   for (let i = 0; i < n; i++) {
     const cell = canvasCells[i];
     const asset = library.find(a => a.id === cell.assetId);
     if (!asset) continue;
 
-    // Fractional position to exact pixel values
+    const natW = asset.natW || 1, natH = asset.natH || 1;
+    const ir = natW / natH; // image aspect ratio
+
+    // Calculate exact pixel width & height (strictly locked to image ratio + tag)
     const px = Math.round(cell.fx * fw);
     const py = Math.round(cell.fy * fh);
     const pw = Math.round(cell.fw * fw);
-    const ph = Math.round(cell.fh * fh);
+    const imgH = Math.round(pw / ir);
+    const ph = tagH + imgH;
 
-    const tagH = Math.round(tagSize * 1.6 + 6);
+    // Update cell.fh in state to match exact height
+    cell.fh = ph / fh;
 
-    // Outer Cell (exact size, no invisible margins)
+    // Outer Cell (exact size, ZERO black voids)
     const div = document.createElement('div');
     div.className = 'cell' + (i === selectedIdx ? ' selected' : '');
     div.style.left = px + 'px';
@@ -201,13 +229,13 @@ function renderCollage() {
     div.style.height = ph + 'px';
     div.dataset.idx = i;
 
-    // Inner Cell (visible frame & border)
+    // Inner Cell (border frame)
     const inner = document.createElement('div');
     inner.className = 'cell-inner';
     inner.style.border = strokeWidth + 'px solid ' + frameColor;
     inner.style.borderRadius = radius + 'px';
 
-    // Tag (Header)
+    // Tag (Header Bar)
     const tag = document.createElement('div');
     tag.className = 'cell-tag';
     tag.textContent = '@IMAGE' + (i + 1);
@@ -218,23 +246,24 @@ function renderCollage() {
     tag.style.color = contrastColor;
     inner.appendChild(tag);
 
-    // Image
+    // Image (fills 100% of remaining height cleanly)
     const img = document.createElement('img');
     img.className = 'cell-img';
     img.src = asset.thumbUrl;
     img.draggable = false;
+    img.style.height = imgH + 'px';
     const filterVal = buildSVGFilter(cell, i);
     if (filterVal) img.style.filter = filterVal;
     inner.appendChild(img);
 
     div.appendChild(inner);
 
-    // 8 FIGMA-STYLE RESIZE HANDLES
-    const handles = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
-    for (const h of handles) {
+    // 4 CORNER RESIZE HANDLES ONLY
+    const corners = ['nw', 'ne', 'sw', 'se'];
+    for (const c of corners) {
       const hDiv = document.createElement('div');
-      hDiv.className = `resize-handle handle-${h}`;
-      hDiv.dataset.edge = h;
+      hDiv.className = `resize-handle handle-${c}`;
+      hDiv.dataset.edge = c;
       div.appendChild(hDiv);
     }
 
@@ -265,7 +294,7 @@ const interaction = {
   cellIdx: -1,
   startMouseX: 0, startMouseY: 0,
   startFx: 0, startFy: 0, startFw: 0, startFh: 0,
-  resizeEdge: '',   // 'nw','n','ne','w','e','sw','s','se'
+  resizeEdge: '',   // 'nw','ne','sw','se'
   didDrag: false,
   swapTarget: -1
 };
@@ -305,7 +334,7 @@ collage.addEventListener('pointerdown', e => {
   e.preventDefault();
 });
 
-// Pointer move → Apply movement, resizing, or swap dragging
+// Pointer move → Apply movement, proportional resizing, or swap dragging
 collage.addEventListener('pointermove', e => {
   if (!interaction.active) return;
   const fw = frame.offsetWidth, fh = frame.offsetHeight;
@@ -316,8 +345,10 @@ collage.addEventListener('pointermove', e => {
   if (!interaction.didDrag) return;
 
   const cell = canvasCells[interaction.cellIdx];
+  const asset = library.find(a => a.id === cell.assetId);
+  const ir = asset ? (asset.natW / asset.natH) : 1;
+  const tagH = Math.round(tagSize * 1.6 + 6);
   const dfx = dx / fw, dfy = dy / fh;
-  const minW = 0.05, minH = 0.05; // min 5% canvas size
 
   if (interaction.mode === 'move') {
     // Free drag across full canvas (0 to 1-fw)
@@ -327,31 +358,42 @@ collage.addEventListener('pointermove', e => {
 
   } else if (interaction.mode === 'resize') {
     const edge = interaction.resizeEdge;
-    let fx = interaction.startFx, fy = interaction.startFy;
-    let fw2 = interaction.startFw, fh2 = interaction.startFh;
+    const startPx = interaction.startFw * fw;
+    let newPw = startPx;
 
-    // Horizontal resize
-    if (edge.includes('e')) {
-      fw2 = Math.max(minW, interaction.startFw + dfx);
-    }
-    if (edge.includes('w')) {
-      fw2 = Math.max(minW, interaction.startFw - dfx);
-      fx = interaction.startFx + (interaction.startFw - fw2);
+    if (edge === 'se' || edge === 'ne') {
+      newPw = Math.max(60, startPx + dx);
+    } else if (edge === 'sw' || edge === 'nw') {
+      newPw = Math.max(60, startPx - dx);
     }
 
-    // Vertical resize
-    if (edge.includes('s')) {
-      fh2 = Math.max(minH, interaction.startFh + dfy);
-    }
-    if (edge.includes('n')) {
-      fh2 = Math.max(minH, interaction.startFh - dfy);
-      fy = interaction.startFy + (interaction.startFh - fh2);
+    const newFw = newPw / fw;
+    const newImgH = newPw / ir;
+    const newPh = tagH + newImgH;
+    const newFh = newPh / fh;
+
+    if (edge === 'se') {
+      cell.fw = Math.min(newFw, 1 - cell.fx);
+      cell.fh = newFh;
+    } else if (edge === 'sw') {
+      const fx = clamp(interaction.startFx + (interaction.startFw - newFw), 0, 1);
+      cell.fx = fx;
+      cell.fw = newFw;
+      cell.fh = newFh;
+    } else if (edge === 'ne') {
+      const fy = clamp(interaction.startFy + (interaction.startFh - newFh), 0, 1);
+      cell.fy = fy;
+      cell.fw = Math.min(newFw, 1 - cell.fx);
+      cell.fh = newFh;
+    } else if (edge === 'nw') {
+      const fx = clamp(interaction.startFx + (interaction.startFw - newFw), 0, 1);
+      const fy = clamp(interaction.startFy + (interaction.startFh - newFh), 0, 1);
+      cell.fx = fx;
+      cell.fy = fy;
+      cell.fw = newFw;
+      cell.fh = newFh;
     }
 
-    cell.fx = clamp(fx, 0, 1 - minW);
-    cell.fy = clamp(fy, 0, 1 - minH);
-    cell.fw = Math.min(fw2, 1 - cell.fx);
-    cell.fh = Math.min(fh2, 1 - cell.fy);
     renderCollage();
 
   } else if (interaction.mode === 'swap') {
@@ -580,11 +622,16 @@ async function exportCollage() {
     exportProg.style.width = ((i+1)/n*80)+'%';
     exportStatus.textContent = `Rendering image ${i+1} / ${n}…`;
 
-    const px = cell.fx * targetW, py = cell.fy * targetH;
-    const pw = cell.fw * targetW, ph = cell.fh * targetH;
+    const natW = asset.natW || 1, natH = asset.natH || 1;
+    const ir = natW / natH;
+
+    const px = cell.fx * targetW;
+    const py = cell.fy * targetH;
+    const pw = cell.fw * targetW;
 
     const tagH = Math.round(tagPx*1.6 + 6*scale);
-    const imgH = ph - tagH;
+    const imgH = pw / ir;
+    const ph = tagH + imgH;
 
     const img = await loadImage(asset.blob instanceof Blob ? URL.createObjectURL(asset.blob) : asset.thumbUrl);
 
@@ -654,12 +701,8 @@ function loadImage(src) {
 }
 
 function drawContain(ctx, img, x, y, w, h) {
-  const ir = img.naturalWidth/img.naturalHeight, cr = w/h;
-  let dw,dh,dx,dy;
-  if (ir>cr) { dw=w; dh=w/ir; dx=x; dy=y+(h-dh)/2; }
-  else { dh=h; dw=h*ir; dx=x+(w-dw)/2; dy=y; }
   ctx.fillStyle = '#111116'; ctx.fillRect(x,y,w,h);
-  ctx.drawImage(img, 0,0,img.naturalWidth,img.naturalHeight, dx,dy,dw,dh);
+  ctx.drawImage(img, 0,0,img.naturalWidth,img.naturalHeight, x,y,w,h);
 }
 
 function roundRect(ctx, x, y, w, h, r) {

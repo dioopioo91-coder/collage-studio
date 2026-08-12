@@ -75,18 +75,14 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 /* IMAGE — below tag (drag here to swap images) */
 .cell-img{display:block;width:100%;flex:1;min-height:0;object-fit:contain;cursor:move}
 
-/* RESIZE HANDLES (Figma style 8 points) */
-.resize-handle{position:absolute;width:10px;height:10px;background:#ffffff;border:2px solid var(--accent);border-radius:2px;z-index:20;opacity:0;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+/* RESIZE HANDLES (4 Corners ONLY) */
+.resize-handle{position:absolute;width:12px;height:12px;background:#ffffff;border:2px solid var(--accent);border-radius:2px;z-index:20;opacity:0;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .cell:hover .resize-handle,.cell.selected .resize-handle{opacity:1}
 
-.handle-nw{top:-5px;left:-5px;cursor:nwse-resize}
-.handle-n{top:-5px;left:calc(50% - 5px);cursor:ns-resize}
-.handle-ne{top:-5px;right:-5px;cursor:nesw-resize}
-.handle-w{top:calc(50% - 5px);left:-5px;cursor:ew-resize}
-.handle-e{top:calc(50% - 5px);right:-5px;cursor:ew-resize}
-.handle-sw{bottom:-5px;left:-5px;cursor:nesw-resize}
-.handle-s{bottom:-5px;left:calc(50% - 5px);cursor:ns-resize}
-.handle-se{bottom:-5px;right:-5px;cursor:nwse-resize}
+.handle-nw{top:-6px;left:-6px;cursor:nwse-resize}
+.handle-ne{top:-6px;right:-6px;cursor:nesw-resize}
+.handle-sw{bottom:-6px;left:-6px;cursor:nesw-resize}
+.handle-se{bottom:-6px;right:-6px;cursor:nwse-resize}
 
 /* CELL CONTROLS */
 .cell-controls{position:absolute;bottom:6px;right:6px;display:flex;gap:3px;z-index:15;opacity:0;transition:opacity .15s}
