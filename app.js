@@ -1,6 +1,6 @@
 /* ============================================================
    Collage Studio — Application Logic
-   PROPORTIONAL CORNER-ONLY RESIZING & ZERO-VOID EDGE-TO-EDGE FRAMES
+   PROPORTIONAL CORNER RESIZING, ZERO-VOID FRAMES, THICK SLIDERS
    ============================================================ */
 'use strict';
 
@@ -97,7 +97,7 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- AUTO LAYOUT (Exact Aspect Ratio Fitting) ---- */
+/* ---- AUTO LAYOUT ---- */
 function computeLayout(n) {
   if (n === 0) return [];
   if (n === 1) return [{ x:0, y:0, w:1, h:1 }];
@@ -208,19 +208,17 @@ function renderCollage() {
     if (!asset) continue;
 
     const natW = asset.natW || 1, natH = asset.natH || 1;
-    const ir = natW / natH; // image aspect ratio
+    const ir = natW / natH;
 
-    // Calculate exact pixel width & height (strictly locked to image ratio + tag)
     const px = Math.round(cell.fx * fw);
     const py = Math.round(cell.fy * fh);
     const pw = Math.round(cell.fw * fw);
     const imgH = Math.round(pw / ir);
     const ph = tagH + imgH;
 
-    // Update cell.fh in state to match exact height
     cell.fh = ph / fh;
 
-    // Outer Cell (exact size, ZERO black voids)
+    // Outer Cell container
     const div = document.createElement('div');
     div.className = 'cell' + (i === selectedIdx ? ' selected' : '');
     div.style.left = px + 'px';
@@ -229,13 +227,13 @@ function renderCollage() {
     div.style.height = ph + 'px';
     div.dataset.idx = i;
 
-    // Inner Cell (border frame)
+    // Inner Cell frame
     const inner = document.createElement('div');
     inner.className = 'cell-inner';
     inner.style.border = strokeWidth + 'px solid ' + frameColor;
     inner.style.borderRadius = radius + 'px';
 
-    // Tag (Header Bar)
+    // Tag (Header Bar — fixed tag name per index i)
     const tag = document.createElement('div');
     tag.className = 'cell-tag';
     tag.textContent = '@IMAGE' + (i + 1);
@@ -246,7 +244,7 @@ function renderCollage() {
     tag.style.color = contrastColor;
     inner.appendChild(tag);
 
-    // Image (fills 100% of remaining height cleanly)
+    // Image
     const img = document.createElement('img');
     img.className = 'cell-img';
     img.src = asset.thumbUrl;
@@ -277,11 +275,6 @@ function renderCollage() {
     btnDel.addEventListener('click', e => { e.stopPropagation(); removeCell(i); });
     controls.appendChild(btnDel);
     div.appendChild(controls);
-
-    // Click selection
-    div.addEventListener('click', () => {
-      if (!interaction.didDrag) selectCell(i);
-    });
 
     collage.appendChild(div);
   }
@@ -352,7 +345,6 @@ collage.addEventListener('pointermove', e => {
   const dfx = dx / fw, dfy = dy / fh;
 
   if (interaction.mode === 'move') {
-    // Free drag across full canvas (0 to 1-fw)
     cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
     cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
     renderCollage();
@@ -398,7 +390,6 @@ collage.addEventListener('pointermove', e => {
     renderCollage();
 
   } else if (interaction.mode === 'swap') {
-    // Highlight swap target under cursor
     const cellEls = $$('.cell', collage);
     let target = -1;
     for (const el of cellEls) {
@@ -417,11 +408,9 @@ collage.addEventListener('pointermove', e => {
     }
     interaction.swapTarget = target;
 
-    // Semi-transparent drag effect on image
     const activeEl = collage.querySelector(`[data-idx="${interaction.cellIdx}"] .cell-img`);
     if (activeEl) activeEl.classList.add('swapping-img');
 
-    // Move dragged cell preview
     cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
     cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
     renderCollage();
@@ -449,14 +438,12 @@ collage.addEventListener('pointerup', e => {
     cellB.assetId = tmpAsset; cellB.adj = tmpAdj;
     // Restore A position
     cellA.fx = interaction.startFx; cellA.fy = interaction.startFy;
-    selectCell(b); // Select target slot
+    selectCell(b);
   } else if (mode === 'swap' && wasDragged && target < 0) {
-    // Snap back
     canvasCells[idx].fx = interaction.startFx;
     canvasCells[idx].fy = interaction.startFy;
     renderCollage();
   } else if (!wasDragged) {
-    // Clicked without dragging → Open properties inspector
     selectCell(idx);
   }
 
@@ -484,6 +471,7 @@ function selectCell(idx) {
   renderCollage();
 }
 
+/* ---- BI-DIRECTIONAL SLIDER & NUMBER SYNC ---- */
 function bindSliderAndNum(sliderEl, numEl, onChange) {
   if (!sliderEl || !numEl) return;
   sliderEl.addEventListener('input', () => {
@@ -530,6 +518,76 @@ $('#btn-reset-adj').addEventListener('click', () => {
 });
 $('#btn-remove-cell').addEventListener('click', () => { if (selectedIdx >= 0) removeCell(selectedIdx); });
 $('#btn-deselect').addEventListener('click', () => { selectedIdx=-1; hideInspector(); renderCollage(); });
+
+/* ---- LIBRARY ---- */
+function renderLibrary() {
+  libGrid.innerHTML = '';
+  libEmpty.style.display = library.length === 0 ? 'block' : 'none';
+  libCount.textContent = library.length;
+  for (const item of library) {
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+    const img = document.createElement('img');
+    img.src = item.thumbUrl; img.loading = 'lazy';
+    card.appendChild(img);
+    const del = document.createElement('button');
+    del.className = 'lib-del-btn'; del.textContent = '✕';
+    del.addEventListener('click', e => { e.stopPropagation(); removeFromLibrary(item.id); });
+    card.appendChild(del);
+    card.addEventListener('click', () => addToCollage(item.id));
+    libGrid.appendChild(card);
+  }
+}
+
+function addToCollage(assetId) {
+  canvasCells.push({ assetId, adj: defaultAdj(), fx:0, fy:0, fw:0, fh:0 });
+  redistributeLayout();
+  renderCollage();
+}
+
+async function removeFromLibrary(id) {
+  canvasCells = canvasCells.filter(c => c.assetId !== id);
+  if (selectedIdx >= canvasCells.length) { selectedIdx = -1; hideInspector(); }
+  const item = library.find(a => a.id === id);
+  if (item && item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
+  library = library.filter(a => a.id !== id);
+  await dbDel(id);
+  redistributeLayout();
+  renderLibrary();
+  renderCollage();
+}
+
+/* ---- FILE UPLOAD ---- */
+async function handleFiles(files) {
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    const id = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+    const blob = file;
+    const thumbUrl = URL.createObjectURL(blob);
+    const dims = await getImageDims(thumbUrl);
+    library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
+    try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
+  }
+  renderLibrary();
+}
+
+fileInput.addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  fileInput.value = '';
+  handleFiles(files);
+});
+$('#btn-upload').addEventListener('click', () => fileInput.click());
+
+/* ---- DRAG & DROP FILES ---- */
+viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
+viewport.addEventListener('dragleave', () => frame.classList.remove('drag-over'));
+viewport.addEventListener('drop', e => {
+  e.preventDefault(); frame.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  }
+});
 
 /* ---- TOOLBAR SLIDERS ---- */
 bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
