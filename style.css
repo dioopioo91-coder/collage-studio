@@ -1,0 +1,120 @@
+:root {
+  --bg-app:#0c0c0e;--bg-topbar:#141417;--bg-sidebar:#16161a;--bg-card:#1e1e24;
+  --bg-card-hover:#262630;--border:#282834;--border-focus:#6366f1;--border-subtle:#20202a;
+  --accent:#6366f1;--accent-hover:#7c3aed;--accent-light:rgba(99,102,241,.15);
+  --text-main:#f8fafc;--text-sec:#94a3b8;--text-muted:#64748b;
+  --red:#ff5252;--green:#40c057;--blue:#4c6ef5;
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --topbar-h:54px;--sidebar-w:310px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main);font-family:var(--font-sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.app{display:flex;flex-direction:column;width:100%;height:100vh}
+
+/* NAVBAR */
+.navbar{height:var(--topbar-h);background:var(--bg-topbar);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;z-index:20}
+.navbar-left,.navbar-center,.navbar-right{display:flex;align-items:center;gap:10px}
+.logo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;letter-spacing:.04em}
+.logo b{color:var(--accent)}.logo svg{color:var(--accent)}
+.badge{background:var(--accent-light);color:var(--accent);border:1px solid rgba(99,102,241,.3);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.tool-item{display:flex;align-items:center;gap:6px}
+.tool-label{font-size:10px;font-weight:700;color:var(--text-sec);letter-spacing:.08em;font-family:var(--font-mono)}
+.tool-divider{width:1px;height:18px;background:var(--border)}
+.navbar-center select{background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:5px;padding:3px 20px 3px 8px;font-size:12px;font-weight:600;font-family:var(--font-sans);outline:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
+.figma-slider{width:60px;height:3px;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+.figma-slider::-webkit-slider-thumb{appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-topbar);cursor:pointer}
+.tool-val{font-size:10px;font-weight:600;font-family:var(--font-mono);color:var(--text-muted);min-width:28px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:all .15s;font-family:var(--font-sans)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:var(--bg-card);color:var(--text-sec);border-color:var(--border)}.btn-secondary:hover{background:var(--bg-card-hover);color:var(--text-main)}
+.btn-upload{width:100%;background:var(--accent-light);color:var(--accent);border:1px dashed var(--accent);padding:7px}.btn-upload:hover{background:var(--accent);color:#fff}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.2)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-full{width:100%}
+.icon-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-sec);font-size:13px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.icon-btn:hover{background:var(--bg-card-hover);color:var(--text-main)}.icon-btn.danger:hover{background:var(--red);color:#fff}
+
+/* STUDIO BODY */
+.studio-body{display:flex;flex:1;overflow:hidden}
+
+/* CANVAS VIEWPORT — simple centering, no nested flex sizing tricks */
+.canvas-viewport{flex:1;background:var(--bg-app);background-image:radial-gradient(var(--border) 1px,transparent 1px);background-size:22px 22px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:20px}
+
+/* CANVAS FRAME — EXPLICIT PIXEL W/H set by JS, position:relative for abs children */
+.canvas-frame{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px var(--border);background:#121215;flex-shrink:0;flex-grow:0}
+.canvas-frame.drag-over{box-shadow:0 0 0 3px var(--accent),0 0 24px rgba(99,102,241,.5)}
+
+/* COLLAGE CANVAS — fills frame, children absolute */
+.collage-canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+
+/* EMPTY STATE — centered placeholder */
+.empty-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);text-align:center;gap:10px;pointer-events:none}
+.empty-canvas h3{font-size:14px;font-weight:600;color:var(--text-sec)}
+.empty-canvas svg{color:var(--text-sec)}
+/* COLOR PICKER */
+.color-picker{width:24px;height:24px;border:2px solid var(--border);border-radius:4px;padding:0;cursor:pointer;background:none;appearance:none;-webkit-appearance:none}
+.color-picker::-webkit-color-swatch-wrapper{padding:0}.color-picker::-webkit-color-swatch{border:none;border-radius:2px}
+
+/* CELL — transparent positioning container */
+.cell{position:absolute;cursor:pointer;user-select:none}
+.cell.dragging{opacity:.3}
+
+/* FRAME — wraps only the actual image bounds, has border + tag */
+.cell-frame{position:absolute;overflow:hidden;border-radius:10px;transition:box-shadow .15s}
+.cell:hover .cell-frame{box-shadow:0 0 12px rgba(99,102,241,.4)}
+.cell.selected .cell-frame{box-shadow:0 0 20px rgba(99,102,241,.6)}
+.cell.drag-target .cell-frame{outline:3px dashed var(--accent);outline-offset:2px}
+
+/* TAG — header bar ABOVE the image (static flow, not absolute) */
+.cell-tag{display:block;width:100%;font-weight:900;font-family:var(--font-sans);text-align:center;letter-spacing:2px;z-index:3;box-sizing:border-box}
+
+/* IMAGE — below tag, width fills frame, height set by JS */
+.cell-img{display:block;width:100%;object-fit:contain}
+
+/* CELL CONTROLS */
+.cell-controls{position:absolute;bottom:6px;right:6px;display:flex;gap:3px;z-index:5;opacity:0;transition:opacity .15s}
+.cell:hover .cell-controls{opacity:1}
+.cell-btn{width:22px;height:22px;border-radius:4px;background:rgba(0,0,0,.8);color:#fff;border:1px solid rgba(255,255,255,.15);font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cell-btn:hover{background:var(--accent)}.cell-btn.remove:hover{background:var(--red)}
+
+/* SIDEBAR */
+.figma-sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-section{display:flex;flex-direction:column}.library-section{flex:1;overflow:hidden}
+.section-header{height:40px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);flex-shrink:0}
+.section-header.border-top{border-top:1px solid var(--border)}
+.section-title{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--text-sec);font-family:var(--font-mono);display:flex;align-items:center;gap:6px}
+.count-pill{background:var(--bg-card);color:var(--text-muted);font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;border:1px solid var(--border)}
+.section-actions{display:flex;gap:3px}
+.upload-dropzone{padding:10px 12px;border-bottom:1px solid var(--border-subtle);background:rgba(0,0,0,.15)}
+.library-scroll{flex:1;overflow-y:auto;padding:10px}
+.library-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.lib-card{position:relative;aspect-ratio:1;border-radius:5px;overflow:hidden;background:var(--bg-card);border:1px solid var(--border);cursor:pointer;transition:transform .15s,border-color .15s}
+.lib-card:hover{border-color:var(--accent);transform:scale(1.03)}
+.lib-card img{width:100%;height:100%;object-fit:cover}
+.lib-del-btn{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:3px;background:rgba(0,0,0,.8);color:#fff;border:none;font-size:10px;line-height:16px;text-align:center;cursor:pointer;opacity:0;transition:opacity .15s}
+.lib-card:hover .lib-del-btn{opacity:1}.lib-del-btn:hover{background:var(--red)}
+.library-empty{text-align:center;color:var(--text-muted);font-size:11px;padding:24px 8px}
+
+/* INSPECTOR */
+.inspector-section{max-height:50%;overflow-y:auto;border-top:1px solid var(--border);background:var(--bg-sidebar)}
+.inspector-controls{padding:12px;display:flex;flex-direction:column;gap:10px}
+.prop-group{display:flex;flex-direction:column;gap:6px}
+.prop-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.prop-label{font-size:11px;font-weight:600;color:var(--text-sec);width:70px;flex-shrink:0}
+.prop-label.color-r{color:var(--red)}.prop-label.color-g{color:var(--green)}.prop-label.color-b{color:var(--blue)}
+.slider-val-box{display:flex;align-items:center;gap:6px;flex:1}
+.val-badge{font-size:10px;font-weight:600;font-family:var(--font-mono);color:var(--text-main);min-width:32px;text-align:right;background:var(--bg-card);padding:2px 5px;border-radius:3px;border:1px solid var(--border)}
+.slider-red::-webkit-slider-thumb{background:var(--red)}.slider-green::-webkit-slider-thumb{background:var(--green)}.slider-blue::-webkit-slider-thumb{background:var(--blue)}
+.prop-actions{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-overlay[hidden]{display:none}
+.figma-modal{width:360px;background:var(--bg-sidebar);border:1px solid var(--border);border-radius:10px;padding:24px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.figma-modal h2{font-size:15px;font-weight:700;margin-bottom:16px}
+.progress-bar-wrap{width:100%;height:5px;background:var(--bg-card);border-radius:3px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)}
+.progress-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-hover));border-radius:3px;transition:width .2s}
+.modal-status{font-size:11px;color:var(--text-sec);margin-bottom:14px;font-family:var(--font-mono)}

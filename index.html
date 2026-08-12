@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collage Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
+
+  <div class="app">
+    <header class="navbar">
+      <div class="navbar-left">
+        <div class="logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          <span>COLLAGE<b>STUDIO</b></span>
+        </div>
+        <span class="badge" id="canvas-info">0 images</span>
+      </div>
+      <div class="navbar-center">
+        <div class="tool-item">
+          <span class="tool-label">RATIO</span>
+          <select id="aspect-ratio">
+            <option value="16:9" selected>16 : 9</option>
+            <option value="21:9">21 : 9</option>
+            <option value="4:3">4 : 3</option>
+            <option value="3:2">3 : 2</option>
+            <option value="1:1">1 : 1</option>
+            <option value="9:16">9 : 16</option>
+            <option value="3:4">3 : 4</option>
+          </select>
+        </div>
+        <div class="tool-divider"></div>
+        <div class="tool-item">
+          <span class="tool-label">GAP</span>
+          <input type="range" id="collage-gap" min="0" max="40" value="10" class="figma-slider">
+          <span class="tool-val" id="gap-val">10px</span>
+        </div>
+        <div class="tool-divider"></div>
+        <div class="tool-item">
+          <span class="tool-label">RADIUS</span>
+          <input type="range" id="border-radius" min="0" max="36" value="10" class="figma-slider">
+          <span class="tool-val" id="radius-val">10px</span>
+        </div>
+        <div class="tool-divider"></div>
+        <div class="tool-item">
+          <span class="tool-label">TAG</span>
+          <input type="range" id="tag-size" min="12" max="32" value="18" class="figma-slider">
+          <span class="tool-val" id="tag-size-val">18px</span>
+        </div>
+        <div class="tool-divider"></div>
+        <div class="tool-item">
+          <span class="tool-label">FRAME</span>
+          <input type="color" id="frame-color" value="#ffffff" class="color-picker">
+          <span class="tool-val" id="frame-color-val">#FFF</span>
+        </div>
+        <div class="tool-divider"></div>
+        <div class="tool-item">
+          <span class="tool-label">STROKE</span>
+          <input type="range" id="frame-stroke" min="1" max="8" value="3" class="figma-slider">
+          <span class="tool-val" id="frame-stroke-val">3px</span>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <button class="btn btn-secondary" id="btn-clear-canvas">Clear</button>
+        <button class="btn btn-primary" id="btn-export">Export 8K</button>
+      </div>
+    </header>
+
+    <div class="studio-body">
+      <main class="canvas-viewport" id="canvas-viewport">
+        <!-- Canvas frame: explicit pixel w/h set by JS -->
+        <div class="canvas-frame" id="collage-wrapper">
+          <!-- Collage rendered as absolutely-positioned children -->
+          <div class="collage-canvas" id="collage"></div>
+          <div class="empty-canvas" id="empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            <h3>Drop images or click from library</h3>
+          </div>
+        </div>
+      </main>
+
+      <aside class="figma-sidebar">
+        <section class="sidebar-section library-section">
+          <div class="section-header">
+            <div class="section-title">ASSETS <span class="count-pill" id="lib-count">0</span></div>
+            <div class="section-actions">
+              <button class="icon-btn" id="btn-add-all" title="Add all">+</button>
+              <button class="icon-btn danger" id="btn-clear-lib" title="Clear">×</button>
+            </div>
+          </div>
+          <div class="upload-dropzone">
+            <input type="file" id="file-input" multiple accept="image/*" hidden>
+            <button class="btn btn-upload" id="btn-upload">Upload Images</button>
+          </div>
+          <div class="library-scroll">
+            <div class="library-grid" id="library-grid"></div>
+            <div class="library-empty" id="library-empty">No images yet</div>
+          </div>
+        </section>
+
+        <section class="sidebar-section inspector-section" id="adjustments-panel" hidden>
+          <div class="section-header border-top">
+            <div class="section-title" id="adj-title">PROPERTIES</div>
+            <button class="icon-btn" id="btn-deselect">×</button>
+          </div>
+          <div class="inspector-controls">
+            <div class="prop-group">
+              <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><span class="val-badge" id="adj-brightness-val">100%</span></div></div>
+              <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><span class="val-badge" id="adj-contrast-val">100%</span></div></div>
+            </div>
+            <div class="prop-group">
+              <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><span class="val-badge" id="adj-r-val">100%</span></div></div>
+              <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><span class="val-badge" id="adj-g-val">100%</span></div></div>
+              <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><span class="val-badge" id="adj-b-val">100%</span></div></div>
+            </div>
+            <div class="prop-actions">
+              <button class="btn btn-secondary btn-full" id="btn-reset-adj">Reset</button>
+              <button class="btn btn-danger btn-full" id="btn-remove-cell">Delete</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="export-modal" hidden>
+    <div class="figma-modal">
+      <h2>Exporting 8K Collage</h2>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="export-progress"></div></div>
+      <p class="modal-status" id="export-status">Building...</p>
+      <button class="btn btn-primary btn-full" id="btn-close-modal" hidden>Done</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
