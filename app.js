@@ -416,6 +416,10 @@ collage.addEventListener('pointermove', e => {
     }
     interaction.swapTarget = target;
 
+    // Semi-transparent drag effect on image
+    const activeEl = collage.querySelector(`[data-idx="${interaction.cellIdx}"] .cell-img`);
+    if (activeEl) activeEl.classList.add('swapping-img');
+
     // Move dragged cell preview
     cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
     cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
@@ -423,30 +427,40 @@ collage.addEventListener('pointermove', e => {
   }
 });
 
-// Pointer up → Finalize drag
+// Pointer up → Finalize drag or select cell
 collage.addEventListener('pointerup', e => {
   if (!interaction.active) return;
   collage.releasePointerCapture(e.pointerId);
+
+  const idx = interaction.cellIdx;
+  const wasDragged = interaction.didDrag;
+  const mode = interaction.mode;
+  const target = interaction.swapTarget;
+
   interaction.active = false;
 
-  if (interaction.mode === 'swap' && interaction.didDrag && interaction.swapTarget >= 0) {
-    const a = interaction.cellIdx, b = interaction.swapTarget;
+  if (mode === 'swap' && wasDragged && target >= 0) {
+    const a = idx, b = target;
     const cellA = canvasCells[a], cellB = canvasCells[b];
-    // Swap image content & adjustments, keep positions
+    // Swap ONLY image asset & color adjustments (keep frame positions & tag indices untouched)
     const tmpAsset = cellA.assetId, tmpAdj = {...cellA.adj};
     cellA.assetId = cellB.assetId; cellA.adj = {...cellB.adj};
     cellB.assetId = tmpAsset; cellB.adj = tmpAdj;
     // Restore A position
     cellA.fx = interaction.startFx; cellA.fy = interaction.startFy;
-    renderCollage();
-  } else if (interaction.mode === 'swap' && interaction.didDrag && interaction.swapTarget < 0) {
+    selectCell(b); // Select target slot
+  } else if (mode === 'swap' && wasDragged && target < 0) {
     // Snap back
-    canvasCells[interaction.cellIdx].fx = interaction.startFx;
-    canvasCells[interaction.cellIdx].fy = interaction.startFy;
+    canvasCells[idx].fx = interaction.startFx;
+    canvasCells[idx].fy = interaction.startFy;
     renderCollage();
+  } else if (!wasDragged) {
+    // Clicked without dragging → Open properties inspector
+    selectCell(idx);
   }
 
   $$('.cell', collage).forEach(el => el.classList.remove('drag-target'));
+  $$('.cell-img', collage).forEach(el => el.classList.remove('swapping-img'));
 });
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
