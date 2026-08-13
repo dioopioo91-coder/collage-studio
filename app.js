@@ -285,15 +285,29 @@ function redistributeLayout() {
 /* ---- CANVAS FRAME SIZING ---- */
 function updateFrameSize() {
   const vp = viewport.getBoundingClientRect();
-  const pad = 40;
-  const availW = Math.max(200, vp.width - pad*2);
-  const availH = Math.max(150, vp.height - pad*2);
+  const isMobile = window.innerWidth <= 768;
+  
+  // Use a large virtual viewport on mobile so that tags and borders scale beautifully
+  const availW = isMobile ? 900 : Math.max(200, vp.width - 80);
+  const availH = isMobile ? 600 : Math.max(150, vp.height - 80);
   const ratio = getRatio();
   let w, h;
   if (availW/availH > ratio) { h = availH; w = h*ratio; }
   else { w = availW; h = w/ratio; }
   frame.style.width = Math.round(w) + 'px';
   frame.style.height = Math.round(h) + 'px';
+  
+  // Auto zoom/pan on mobile startup to fit this big virtual viewport on screen nicely
+  if (isMobile && !window.hasSetInitialMobileZoom) {
+    window.hasSetInitialMobileZoom = true;
+    const pad = 15;
+    const fitWScale = (vp.width - pad*2) / w;
+    const fitHScale = (vp.height - pad*2) / h;
+    zoomScale = Math.round(Math.min(fitWScale, fitHScale) * 100) / 100;
+    zoomPanX = 0;
+    zoomPanY = 0;
+    updateZoomTransform();
+  }
 }
 
 /* ---- SVG FILTERS ---- */
@@ -387,14 +401,40 @@ function renderCollage() {
     imgWrap.className = 'cell-img-wrapper';
     imgWrap.style.height = imgH + 'px';
 
+    // Strict Container matching exact visible contain dimension of the image
+    // Reuse the outer scope 'ir' variable directly!
+    let cw = pw;
+    let ch = imgH;
+    let cl = 0;
+    let ct = 0;
+    const cellRatio = pw / imgH;
+    if (ir > cellRatio) {
+      cw = pw;
+      ch = Math.round(pw / ir);
+      ct = Math.round((imgH - ch) / 2);
+    } else {
+      ch = imgH;
+      cw = Math.round(imgH * ir);
+      cl = Math.round((pw - cw) / 2);
+    }
+
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'cell-img-container';
+    imgContainer.style.position = 'absolute';
+    imgContainer.style.left = cl + 'px';
+    imgContainer.style.top = ct + 'px';
+    imgContainer.style.width = cw + 'px';
+    imgContainer.style.height = ch + 'px';
+
     const img = document.createElement('img');
     img.className = 'cell-img';
     img.src = asset.thumbUrl;
     img.draggable = false;
+    img.style.width = '100%';
     img.style.height = '100%';
     const filterVal = buildSVGFilter(cell, i);
     if (filterVal) img.style.filter = filterVal;
-    imgWrap.appendChild(img);
+    imgContainer.appendChild(img);
 
     // Lines Overlay Canvas
     if (cell.adj.lines && cell.adj.lines.enabled) {
@@ -405,10 +445,10 @@ function renderCollage() {
       lCanvas.style.pointerEvents = 'none';
       lCanvas.style.zIndex = '4';
 
-      let boxW = pw, boxH = imgH;
+      let boxW = cw, boxH = ch;
       if (linesObj.mode === 'region' && linesObj.box) {
-        boxW = Math.round((linesObj.box.w / 100) * pw);
-        boxH = Math.round((linesObj.box.h / 100) * imgH);
+        boxW = Math.round((linesObj.box.w / 100) * cw);
+        boxH = Math.round((linesObj.box.h / 100) * ch);
         lCanvas.style.left = linesObj.box.x + '%';
         lCanvas.style.top = linesObj.box.y + '%';
         lCanvas.style.width = linesObj.box.w + '%';
@@ -419,7 +459,7 @@ function renderCollage() {
       }
 
       drawLinesOnCanvas(lCanvas, linesObj, boxW, boxH);
-      imgWrap.appendChild(lCanvas);
+      imgContainer.appendChild(lCanvas);
     }
 
     // Noise Overlay
@@ -437,8 +477,10 @@ function renderCollage() {
       } else {
         noiseDiv.style.left = '0'; noiseDiv.style.top = '0'; noiseDiv.style.width = '100%'; noiseDiv.style.height = '100%';
       }
-      imgWrap.appendChild(noiseDiv);
+      imgContainer.appendChild(noiseDiv);
     }
+    
+    imgWrap.appendChild(imgContainer);
 
     // Region Selection Box
     if (i === selectedIdx) {
@@ -828,11 +870,13 @@ function removeCell(idx) {
 
 function selectCell(idx) {
   if (selectedIdx === idx) {
-    closeFullscreenEditor();
+    selectedIdx = -1;
+    hideInspector();
   } else {
     selectedIdx = idx;
-    openFullscreenEditor(idx);
+    showInspector(idx);
   }
+  renderCollage();
 }
 
 /* ---- BI-DIRECTIONAL SLIDER & NUMBER SYNC ---- */
@@ -1425,7 +1469,23 @@ function setNavigationMode(isPan) {
   if (selectBtn) selectBtn.classList.toggle('active', !isPan);
   if (panBtn) panBtn.classList.toggle('active', isPan);
   viewport.style.cursor = isPan ? 'grab' : '';
+  updateTopModeSwitcher(isPan);
 }
+const btnModeSelect = document.getElementById('btn-mode-select');
+const btnModePan = document.getElementById('btn-mode-pan');
+
+function updateTopModeSwitcher(isPan) {
+  if (btnModeSelect) btnModeSelect.classList.toggle('active', !isPan);
+  if (btnModePan) btnModePan.classList.toggle('active', isPan);
+}
+
+btnModeSelect?.addEventListener('click', () => {
+  setNavigationMode(false);
+});
+btnModePan?.addEventListener('click', () => {
+  setNavigationMode(true);
+});
+
 
 selectBtn?.addEventListener('click', () => setNavigationMode(false));
 panBtn?.addEventListener('click', () => setNavigationMode(true));
@@ -1643,7 +1703,7 @@ const i18n = {
     done: "Готово",
     emptyNotice: "Перетащите фото или выберите из библиотеки",
     layout: "МАКЕТ",
-    settings: "РЕДАКТОР"
+    settings: "НАСТРОЙКИ"
   },
   en: {
     ratio: "RATIO",
@@ -1683,7 +1743,7 @@ const i18n = {
     done: "Done",
     emptyNotice: "Drop images or click from library",
     layout: "LAYOUT",
-    settings: "EDITOR"
+    settings: "SETTINGS"
   }
 };
 
@@ -1842,14 +1902,24 @@ function renderEditorImage() {
   imgWrap.className = 'cell-img-wrapper';
   imgWrap.style.height = imgH + 'px';
 
+  // Strict container inside editor (shares same scaling logic)
+  const imgContainer = document.createElement('div');
+  imgContainer.className = 'cell-img-container';
+  imgContainer.style.position = 'absolute';
+  imgContainer.style.left = '0px';
+  imgContainer.style.top = '0px';
+  imgContainer.style.width = pw + 'px';
+  imgContainer.style.height = imgH + 'px';
+
   const img = document.createElement('img');
   img.className = 'cell-img';
   img.src = asset.thumbUrl;
   img.draggable = false;
+  img.style.width = '100%';
   img.style.height = '100%';
   const filterVal = buildSVGFilter(cell, selectedIdx);
   if (filterVal) img.style.filter = filterVal;
-  imgWrap.appendChild(img);
+  imgContainer.appendChild(img);
 
   // Lines
   if (cell.adj.lines && cell.adj.lines.enabled) {
@@ -1874,7 +1944,7 @@ function renderEditorImage() {
     }
 
     drawLinesOnCanvas(lCanvas, linesObj, boxW, boxH);
-    imgWrap.appendChild(lCanvas);
+    imgContainer.appendChild(lCanvas);
   }
 
   // Noise
@@ -1892,7 +1962,7 @@ function renderEditorImage() {
     } else {
       noiseDiv.style.left = '0'; noiseDiv.style.top = '0'; noiseDiv.style.width = '100%'; noiseDiv.style.height = '100%';
     }
-    imgWrap.appendChild(noiseDiv);
+    imgContainer.appendChild(noiseDiv);
   }
 
   // Region box selection
@@ -1916,9 +1986,10 @@ function renderEditorImage() {
       h.dataset.rbHandle = pos;
       rb.appendChild(h);
     });
-    imgWrap.appendChild(rb);
+    imgContainer.appendChild(rb);
   }
 
+  imgWrap.appendChild(imgContainer);
   inner.appendChild(imgWrap);
   editorImgContainer.appendChild(inner);
 }
@@ -1946,8 +2017,13 @@ document.querySelectorAll('.inspector-section input').forEach(input => {
   });
 });
 
-// Fullscreen Editor Zoom & Pan controls
+// Fullscreen Editor Zoom & Pan controls (Ultra Smooth PointerEvents multi-touch implementation)
 let isPanningEditor = false;
+let activePointers = [];
+let prevDiff = -1;
+let startScale = 1.0;
+let startPanX = 0, startPanY = 0;
+let startMidX = 0, startMidY = 0;
 let editorPanStartX = 0, editorPanStartY = 0;
 let editorPanInitialX = 0, editorPanInitialY = 0;
 
@@ -1955,7 +2031,7 @@ editorViewport?.addEventListener('pointerdown', e => {
   const rbHandle = e.target.closest('.region-box-handle');
   const rbBox    = e.target.closest('.region-box');
 
-  if (rbBox && selectedIdx >= 0) {
+  if (rbBox && selectedIdx >= 0 && activePointers.length === 0) {
     const effectKey = rbBox.dataset.effectKey || 'lines';
     const imgWrap = rbBox.closest('.cell-img-wrapper');
     const wrapRect = imgWrap.getBoundingClientRect();
@@ -1980,18 +2056,36 @@ editorViewport?.addEventListener('pointerdown', e => {
     return;
   }
 
-  // Pan editor canvas
-  isPanningEditor = true;
-  editorPanStartX = e.clientX;
-  editorPanStartY = e.clientY;
-  editorPanInitialX = editorPanX;
-  editorPanInitialY = editorPanY;
-  editorViewport.style.cursor = 'grabbing';
+  // Push pointer to active list
+  activePointers.push(e);
+
+  if (activePointers.length === 1) {
+    isPanningEditor = true;
+    editorPanStartX = e.clientX;
+    editorPanStartY = e.clientY;
+    editorPanInitialX = editorPanX;
+    editorPanInitialY = editorPanY;
+    editorViewport.style.cursor = 'grabbing';
+  } else if (activePointers.length === 2) {
+    isPanningEditor = false;
+    const p1 = activePointers[0];
+    const p2 = activePointers[1];
+    prevDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    startScale = editorScale;
+    startMidX = (p1.clientX + p2.clientX) / 2;
+    startMidY = (p1.clientY + p2.clientY) / 2;
+    startPanX = editorPanX;
+    startPanY = editorPanY;
+  }
+  
   editorViewport.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
 
 editorViewport?.addEventListener('pointermove', e => {
+  const idx = activePointers.findIndex(p => p.pointerId === e.pointerId);
+  if (idx >= 0) activePointers[idx] = e;
+
   if (interaction.active && selectedIdx >= 0) {
     const dx = e.clientX - interaction.startMouseX;
     const dy = e.clientY - interaction.startMouseY;
@@ -2038,25 +2132,54 @@ editorViewport?.addEventListener('pointermove', e => {
     return;
   }
 
-  if (isPanningEditor) {
+  if (activePointers.length === 1 && isPanningEditor) {
     const dx = e.clientX - editorPanStartX;
     const dy = e.clientY - editorPanStartY;
     editorPanX = editorPanInitialX + (dx / editorScale);
     editorPanY = editorPanInitialY + (dy / editorScale);
     updateEditorTransform();
+  } else if (activePointers.length === 2) {
+    const p1 = activePointers[0];
+    const p2 = activePointers[1];
+    const curDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    
+    // Zoom scale factor
+    const factor = curDiff / prevDiff;
+    editorScale = Math.max(0.4, Math.min(4.0, Math.round((startScale * factor) * 100) / 100));
+
+    // Pan mid point translation
+    const curMidX = (p1.clientX + p2.clientX) / 2;
+    const curMidY = (p1.clientY + p2.clientY) / 2;
+    editorPanX = startPanX + (curMidX - startMidX);
+    editorPanY = startPanY + (curMidY - startMidY);
+
+    updateEditorTransform();
   }
 });
 
 editorViewport?.addEventListener('pointerup', e => {
-  if (interaction.active) {
-    interaction.active = false;
-    editorViewport.releasePointerCapture(e.pointerId);
+  activePointers = activePointers.filter(p => p.pointerId !== e.pointerId);
+  if (activePointers.length < 2) {
+    prevDiff = -1;
   }
-  if (isPanningEditor) {
+  if (activePointers.length === 0) {
     isPanningEditor = false;
     editorViewport.style.cursor = '';
-    editorViewport.releasePointerCapture(e.pointerId);
   }
+  if (interaction.active) {
+    interaction.active = false;
+  }
+  editorViewport.releasePointerCapture(e.pointerId);
+});
+
+editorViewport?.addEventListener('pointercancel', e => {
+  activePointers = activePointers.filter(p => p.pointerId !== e.pointerId);
+  if (activePointers.length < 2) prevDiff = -1;
+  if (activePointers.length === 0) {
+    isPanningEditor = false;
+    editorViewport.style.cursor = '';
+  }
+  interaction.active = false;
 });
 
 // Wheel zoom in editor
@@ -2066,48 +2189,3 @@ editorViewport?.addEventListener('wheel', e => {
   editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorScale + delta) * 10) / 10));
   updateEditorTransform();
 }, { passive: false });
-
-// Mobile Gestures inside Editor Viewport (Touch Zoom & Pan)
-let editorTouchStartDist = 0;
-let editorTouchStartScale = 1.0;
-let editorTouchStartPanX = 0, editorTouchStartPanY = 0;
-let editorTouchMidX = 0, editorTouchMidY = 0;
-
-editorViewport?.addEventListener('touchstart', e => {
-  if (e.touches.length === 2) {
-    isPanningEditor = false;
-    const t1 = e.touches[0];
-    const t2 = e.touches[1];
-    editorTouchStartDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-    editorTouchStartScale = editorScale;
-    editorTouchMidX = (t1.clientX + t2.clientX) / 2;
-    editorTouchMidY = (t1.clientY + t2.clientY) / 2;
-    editorTouchStartPanX = editorPanX;
-    editorTouchStartPanY = editorPanY;
-    if (e.cancelable) e.preventDefault();
-  }
-}, { passive: false });
-
-editorViewport?.addEventListener('touchmove', e => {
-  if (e.touches.length === 2 && editorTouchStartDist > 0) {
-    const t1 = e.touches[0];
-    const t2 = e.touches[1];
-    const distNow = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-    const factor = distNow / editorTouchStartDist;
-    editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorTouchStartScale * factor) * 100) / 100));
-
-    const curMidX = (t1.clientX + t2.clientX) / 2;
-    const curMidY = (t1.clientY + t2.clientY) / 2;
-    editorPanX = editorTouchStartPanX + (curMidX - editorTouchMidX);
-    editorPanY = editorTouchStartPanY + (curMidY - editorTouchMidY);
-
-    updateEditorTransform();
-    if (e.cancelable) e.preventDefault();
-  }
-}, { passive: false });
-
-editorViewport?.addEventListener('touchend', e => {
-  if (e.touches.length < 2) {
-    editorTouchStartDist = 0;
-  }
-});

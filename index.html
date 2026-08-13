@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
@@ -86,6 +86,11 @@
 
     <div class="studio-body">
       <main class="canvas-viewport" id="canvas-viewport">
+        <!-- Floating Mode Switcher (Top Center) -->
+        <div class="canvas-mode-switcher">
+          <button class="canvas-mode-btn active" id="btn-mode-select" data-i18n="modeSelect">Фото</button>
+          <button class="canvas-mode-btn" id="btn-mode-pan" data-i18n="modePan">Холст</button>
+        </div>
         <!-- Canvas frame: explicit pixel w/h set by JS -->
         <div class="canvas-frame" id="collage-wrapper">
           <!-- Collage rendered as absolutely-positioned children -->
@@ -285,6 +290,6 @@
   <!-- Global file input: visually hidden but accessible to <label for> clicks -->
   <input type="file" id="global-file-input" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
