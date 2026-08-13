@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload Test</title>
+<style>
+body { font-family: sans-serif; padding: 20px; background: #111; color: #fff; }
+.result { margin-top: 20px; padding: 10px; background: #222; border-radius: 8px; white-space: pre-wrap; font-size: 12px; }
+img { max-width: 100%; margin-top: 10px; border-radius: 8px; }
+.test-block { margin: 20px 0; padding: 16px; background: #1a1a2e; border-radius: 12px; }
+h3 { color: #7c5cff; margin-top: 0; }
+input[type="file"] { margin: 10px 0; }
+label.btn { display: inline-block; padding: 12px 24px; background: #7c5cff; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>📱 Upload Test Page</h1>
+<p>Тестируем загрузку фото разными способами</p>
+
+<!-- TEST 1: Plain visible input -->
+<div class="test-block">
+  <h3>Тест 1: Обычный input (видимый)</h3>
+  <input type="file" id="test1" accept="image/*" multiple>
+</div>
+
+<!-- TEST 2: Label + hidden input -->
+<div class="test-block">
+  <h3>Тест 2: Label + скрытый input (display:none)</h3>
+  <label class="btn" for="test2">Выбрать фото</label>
+  <input type="file" id="test2" accept="image/*" multiple style="display:none">
+</div>
+
+<!-- TEST 3: Label + visually hidden input -->
+<div class="test-block">
+  <h3>Тест 3: Label + visually-hidden input</h3>
+  <label class="btn" for="test3">Выбрать фото</label>
+  <input type="file" id="test3" accept="image/*" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
+</div>
+
+<!-- TEST 4: Label + input without accept -->
+<div class="test-block">
+  <h3>Тест 4: Без accept атрибута</h3>
+  <label class="btn" for="test4">Выбрать файл</label>
+  <input type="file" id="test4" multiple style="display:none">
+</div>
+
+<!-- TEST 5: JS .click() -->
+<div class="test-block">
+  <h3>Тест 5: Кнопка + JS .click()</h3>
+  <button class="btn" id="btn5">Загрузить через JS</button>
+  <input type="file" id="test5" accept="image/*" multiple style="display:none">
+</div>
+
+<div class="result" id="log">Лог событий:</div>
+<div id="preview"></div>
+
+<script>
+const log = document.getElementById('log');
+const preview = document.getElementById('preview');
+
+function addLog(msg) {
+  log.textContent += '\n' + new Date().toLocaleTimeString() + ': ' + msg;
+  log.scrollTop = log.scrollHeight;
+}
+
+// Listen on all test inputs
+for (let i = 1; i <= 5; i++) {
+  const input = document.getElementById('test' + i);
+  if (input) {
+    input.addEventListener('change', function(e) {
+      const files = e.target.files;
+      addLog('TEST ' + i + ' — change event! Files: ' + files.length);
+      for (let f of files) {
+        addLog('  → ' + f.name + ' (' + f.type + ', ' + Math.round(f.size/1024) + 'KB)');
+        // Show preview
+        const url = URL.createObjectURL(f);
+        const img = document.createElement('img');
+        img.src = url;
+        preview.appendChild(img);
+      }
+      input.value = '';
+    });
+  }
+}
+
+// Test 5: JS click
+document.getElementById('btn5').addEventListener('click', function() {
+  addLog('TEST 5 — JS .click() triggered');
+  document.getElementById('test5').click();
+});
+
+addLog('Page loaded. User Agent: ' + navigator.userAgent.substring(0, 80));
+</script>
+</body>
+</html>
