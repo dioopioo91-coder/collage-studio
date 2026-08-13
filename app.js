@@ -9,24 +9,72 @@
 const $ = (s, p) => (p || document).querySelector(s);
 const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
 
-/* ---- DB ---- */
+/* ---- DB (FAIL-SAFE FOR WEBVIEWS & PRIVATE BROWSING) ---- */
 const DB_NAME = 'CollageStudioDB_v4';
 const DB_VER  = 1;
 const STORE   = 'assets';
 let db = null;
 
 function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-    req.onsuccess = () => { db = req.result; resolve(db); };
-    req.onerror = () => reject(req.error);
+  return new Promise(resolve => {
+    try {
+      if (!window.indexedDB) { resolve(null); return; }
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = () => {
+        try { req.result.createObjectStore(STORE, { keyPath: 'id' }); } catch(e) {}
+      };
+      req.onsuccess = () => { db = req.result; resolve(db); };
+      req.onerror = () => { console.warn('IndexedDB blocked'); resolve(null); };
+    } catch(e) {
+      console.warn('IndexedDB exception:', e);
+      resolve(null);
+    }
   });
 }
-function dbPut(item)  { return new Promise((y,n) => { const t = db.transaction(STORE,'readwrite').objectStore(STORE).put(item); t.onsuccess=()=>y(); t.onerror=()=>n(t.error); }); }
-function dbDel(id)    { return new Promise((y,n) => { const t = db.transaction(STORE,'readwrite').objectStore(STORE).delete(id); t.onsuccess=()=>y(); t.onerror=()=>n(t.error); }); }
-function dbClear()    { return new Promise((y,n) => { const t = db.transaction(STORE,'readwrite').objectStore(STORE).clear();    t.onsuccess=()=>y(); t.onerror=()=>n(t.error); }); }
-function dbGetAll()   { return new Promise((y,n) => { const t = db.transaction(STORE,'readonly' ).objectStore(STORE).getAll();   t.onsuccess=()=>y(t.result); t.onerror=()=>n(t.error); }); }
+
+function dbPut(item) {
+  return new Promise(y => {
+    if (!db) return y();
+    try {
+      const t = db.transaction(STORE, 'readwrite').objectStore(STORE).put(item);
+      t.onsuccess = () => y();
+      t.onerror = () => y();
+    } catch(e) { y(); }
+  });
+}
+
+function dbDel(id) {
+  return new Promise(y => {
+    if (!db) return y();
+    try {
+      const t = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+      t.onsuccess = () => y();
+      t.onerror = () => y();
+    } catch(e) { y(); }
+  });
+}
+
+function dbClear() {
+  return new Promise(y => {
+    if (!db) return y();
+    try {
+      const t = db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
+      t.onsuccess = () => y();
+      t.onerror = () => y();
+    } catch(e) { y(); }
+  });
+}
+
+function dbGetAll() {
+  return new Promise(y => {
+    if (!db) return y([]);
+    try {
+      const t = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+      t.onsuccess = () => y(t.result || []);
+      t.onerror = () => y([]);
+    } catch(e) { y([]); }
+  });
+}
 
 /* ---- STATE ---- */
 let library       = [];  // {id, blob, thumbUrl, natW, natH}
@@ -1681,12 +1729,19 @@ $$('.lang-btn').forEach(btn => {
 
 /* ---- INIT ---- */
 (async function init() {
-  await openDB();
-  const items = await dbGetAll();
-  for (const item of items) {
-    const thumbUrl = URL.createObjectURL(item.blob);
-    const dims = await getImageDims(thumbUrl);
-    library.push({ id: item.id, blob: item.blob, thumbUrl, natW: dims.w, natH: dims.h });
+  try {
+    await openDB();
+    const items = await dbGetAll();
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (!item || !item.blob) continue;
+        const thumbUrl = URL.createObjectURL(item.blob);
+        const dims = await getImageDims(thumbUrl);
+        library.push({ id: item.id, blob: item.blob, thumbUrl, natW: dims.w, natH: dims.h });
+      }
+    }
+  } catch(e) {
+    console.warn('Init error:', e);
   }
   renderLibrary();
   updateFrameSize();
