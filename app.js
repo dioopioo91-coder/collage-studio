@@ -332,7 +332,11 @@ function renderCollage() {
   const fw = frame.offsetWidth;
   const fh = frame.offsetHeight;
   const contrastColor = getContrastColor(frameColor);
-  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  let activeTagSize = tagSize;
+  if (window.innerWidth <= 768) {
+    activeTagSize = Math.max(8, Math.round(tagSize * 0.6)); // 40% smaller on mobile
+  }
+  const tagH = tagEnabled ? Math.round(activeTagSize * 1.5 + 4) : 0;
   const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
@@ -390,7 +394,7 @@ function renderCollage() {
       const tag = document.createElement('div');
       tag.className = 'cell-tag';
       tag.textContent = '@IMAGE' + (i + 1);
-      tag.style.fontSize = tagSize + 'px';
+      tag.style.fontSize = activeTagSize + 'px';
       tag.style.height = tagH + 'px';
       tag.style.lineHeight = tagH + 'px';
       tag.style.background = frameColor;
@@ -551,7 +555,7 @@ viewport.addEventListener('pointerdown', e => {
   if (e.target.closest('.zoom-controls')) return;
 
   // Check for canvas panning trigger (Middle click = 1, Right click = 2, Space, Hand tool)
-  if (selectedIdx < 0 && (panToolActive || isSpacePressed || e.button === 1 || e.button === 2)) {
+  if (panToolActive || isSpacePressed || e.button === 1 || e.button === 2) {
     isPanningCanvas = true;
     panStartX = e.clientX;
     panStartY = e.clientY;
@@ -920,7 +924,10 @@ function showInspector(idx) {
   $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
-function hideInspector() { adjPanel.hidden = true; }
+function hideInspector() {
+  adjPanel.hidden = true;
+  resetZoomAndPan();
+}
 
 // Direct Segmented Mode Handler (Exposed globally for onclick)
 window.setEffectMode = function(effectKey, mode) {
@@ -1430,8 +1437,14 @@ function updateZoomTransform() {
   if (zoomValEl) zoomValEl.textContent = Math.round(zoomScale * 100) + '%';
 }
 
+function resetZoomAndPan() {
+  zoomScale = 1.0;
+  zoomPanX = 0;
+  zoomPanY = 0;
+  updateZoomTransform();
+}
+
 viewport.addEventListener('wheel', e => {
-  if (selectedIdx >= 0) return; // Block wheel zoom when editing an image
   e.preventDefault();
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   zoomScale = Math.max(0.4, Math.min(3.0, Math.round((zoomScale + delta) * 10) / 10));
@@ -1478,7 +1491,6 @@ let touchStartPanX = 0, touchStartPanY = 0;
 let touchMidX = 0, touchMidY = 0;
 
 viewport.addEventListener('touchstart', e => {
-  if (selectedIdx >= 0) return; // Block touch gesture zoom/pan when editing an image
   if (e.target.closest('.zoom-controls') || e.target.closest('.mobile-bottom-bar') || e.target.closest('.figma-sidebar') || e.target.closest('.inspector-section')) return;
 
   if (e.touches.length === 2) {
@@ -1496,7 +1508,6 @@ viewport.addEventListener('touchstart', e => {
 }, { passive: false });
 
 viewport.addEventListener('touchmove', e => {
-  if (selectedIdx >= 0) return; // Block touch gesture zoom/pan when editing an image
   if (e.touches.length === 2 && touchStartDist > 0) {
     const t1 = e.touches[0];
     const t2 = e.touches[1];
