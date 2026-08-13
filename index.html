@@ -156,9 +156,9 @@
               <div class="effect-card">
                 <div class="effect-header">
                   <label class="toggle-label"><input type="checkbox" id="lines-enable"> <span data-i18n="lines">Линии</span></label>
-                  <div class="mode-segmented" id="lines-mode-seg">
-                    <button type="button" class="segment-btn active" data-mode="full" data-i18n="fullPhoto">Всё фото</button>
-                    <button type="button" class="segment-btn" data-mode="region" data-i18n="selectedRegion">Выделенный участок</button>
+                  <div class="mode-segmented">
+                    <button type="button" class="segment-btn active" id="lines-mode-full" onclick="setEffectMode('lines','full')" data-i18n="fullPhoto">Всё фото</button>
+                    <button type="button" class="segment-btn" id="lines-mode-region" onclick="setEffectMode('lines','region')" data-i18n="selectedRegion">Выделенный участок</button>
                   </div>
                 </div>
                 <div class="effect-body" id="lines-body">
@@ -174,9 +174,9 @@
               <div class="effect-card">
                 <div class="effect-header">
                   <label class="toggle-label"><input type="checkbox" id="noise-enable"> <span data-i18n="noise">Шум</span></label>
-                  <div class="mode-segmented" id="noise-mode-seg">
-                    <button type="button" class="segment-btn active" data-mode="full" data-i18n="fullPhoto">Всё фото</button>
-                    <button type="button" class="segment-btn" data-mode="region" data-i18n="selectedRegion">Выделенный участок</button>
+                  <div class="mode-segmented">
+                    <button type="button" class="segment-btn active" id="noise-mode-full" onclick="setEffectMode('noise','full')" data-i18n="fullPhoto">Всё фото</button>
+                    <button type="button" class="segment-btn" id="noise-mode-region" onclick="setEffectMode('noise','region')" data-i18n="selectedRegion">Выделенный участок</button>
                   </div>
                 </div>
                 <div class="effect-body" id="noise-body">

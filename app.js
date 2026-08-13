@@ -817,7 +817,10 @@ function showInspector(idx) {
   // Lines bindings
   const l = cell.adj.lines;
   $('#lines-enable').checked = !!l.enabled;
-  syncSegmentedBtns('lines-mode-seg', l.mode || 'full');
+  const lMode = l.mode || 'full';
+  $('#lines-mode-full')?.classList.toggle('active', lMode === 'full');
+  $('#lines-mode-region')?.classList.toggle('active', lMode === 'region');
+
   $('#lines-angle').value = l.angle; $('#lines-angle-num').value = l.angle;
   $('#lines-spacing').value = l.spacing; $('#lines-spacing-num').value = l.spacing;
   $('#lines-size').value = l.size; $('#lines-size-num').value = l.size;
@@ -828,11 +831,35 @@ function showInspector(idx) {
   // Noise bindings
   const nObj = cell.adj.noise;
   $('#noise-enable').checked = !!nObj.enabled;
-  syncSegmentedBtns('noise-mode-seg', nObj.mode || 'full');
+  const nMode = nObj.mode || 'full';
+  $('#noise-mode-full')?.classList.toggle('active', nMode === 'full');
+  $('#noise-mode-region')?.classList.toggle('active', nMode === 'region');
+
   $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
 function hideInspector() { adjPanel.hidden = true; }
+
+// Direct Segmented Mode Handler (Exposed globally for onclick)
+window.setEffectMode = function(effectKey, mode) {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = canvasCells[selectedIdx];
+
+  if (effectKey === 'lines') {
+    if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
+    cell.adj.lines.enabled = true;
+    cell.adj.lines.mode = mode;
+    $('#lines-enable').checked = true;
+  } else if (effectKey === 'noise') {
+    if (!cell.adj.noise) cell.adj.noise = defaultAdj().noise;
+    cell.adj.noise.enabled = true;
+    cell.adj.noise.mode = mode;
+    $('#noise-enable').checked = true;
+  }
+
+  showInspector(selectedIdx);
+  renderCollage();
+};
 
 // Inspector Tabs Switcher
 $$('.tab-btn').forEach(btn => {
@@ -867,49 +894,12 @@ function autoEnableNoise() {
   $('#noise-enable').checked = true;
 }
 
-// Robust Segmented Mode Button Listener Helper
-function attachSegmentedListener(containerId, effectKey) {
-  const container = $('#' + containerId);
-  if (!container) return;
-
-  const handler = e => {
-    const btn = e.target.closest('.segment-btn');
-    if (!btn) return;
-    e.stopPropagation();
-
-    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-
-    const mode = btn.dataset.mode;
-    if (!mode) return;
-
-    if (effectKey === 'lines') {
-      autoEnableLines();
-      canvasCells[selectedIdx].adj.lines.mode = mode;
-    } else if (effectKey === 'noise') {
-      autoEnableNoise();
-      canvasCells[selectedIdx].adj.noise.mode = mode;
-    }
-
-    syncSegmentedBtns(containerId, mode);
-    renderCollage();
-  };
-
-  container.addEventListener('click', handler);
-  container.addEventListener('pointerdown', e => {
-    if (e.target.closest('.segment-btn')) {
-      e.stopPropagation();
-    }
-  });
-}
-
 // Lines Effect Listeners
 $('#lines-enable').addEventListener('change', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
   canvasCells[selectedIdx].adj.lines.enabled = e.target.checked;
   renderCollage();
 });
-
-attachSegmentedListener('lines-mode-seg', 'lines');
 
 bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
@@ -950,8 +940,6 @@ $('#noise-enable').addEventListener('change', e => {
   canvasCells[selectedIdx].adj.noise.enabled = e.target.checked;
   renderCollage();
 });
-
-attachSegmentedListener('noise-mode-seg', 'noise');
 
 bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
