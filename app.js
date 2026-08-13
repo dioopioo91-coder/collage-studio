@@ -118,8 +118,8 @@ function drawLinesOnCanvas(canvas, linesObj, width, height) {
 
   for (let offset = -diag; offset < diag; offset += step) {
     ctx.beginPath();
-    ctx.moveTo(offset, -diag);
-    ctx.lineTo(offset, diag);
+    ctx.moveTo(-diag, offset);
+    ctx.lineTo(diag, offset);
     ctx.stroke();
   }
   ctx.restore();
@@ -1167,8 +1167,8 @@ async function runExportProcess(baseW, mimeType) {
 
       for (let offset = -diag; offset < diag; offset += step) {
         ctx.beginPath();
-        ctx.moveTo(offset, -diag);
-        ctx.lineTo(offset, diag);
+        ctx.moveTo(-diag, offset);
+        ctx.lineTo(diag, offset);
         ctx.stroke();
       }
       ctx.restore();
@@ -1309,14 +1309,18 @@ $('#btn-zoom-reset')?.addEventListener('click', () => {
   updateZoomTransform();
 });
 
-const panBtn = $('#btn-pan-tool');
-if (panBtn) {
-  panBtn.addEventListener('click', () => {
-    panToolActive = !panToolActive;
-    panBtn.classList.toggle('active', panToolActive);
-    viewport.style.cursor = panToolActive ? 'grab' : '';
-  });
+const selectBtn = $('#btn-select-tool');
+const panBtn    = $('#btn-pan-tool');
+
+function setNavigationMode(isPan) {
+  panToolActive = isPan;
+  if (selectBtn) selectBtn.classList.toggle('active', !isPan);
+  if (panBtn) panBtn.classList.toggle('active', isPan);
+  viewport.style.cursor = isPan ? 'grab' : '';
 }
+
+selectBtn?.addEventListener('click', () => setNavigationMode(false));
+panBtn?.addEventListener('click', () => setNavigationMode(true));
 
 viewport.addEventListener('dblclick', e => {
   if (e.target === viewport || e.target === frame) {
