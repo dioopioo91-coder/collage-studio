@@ -1019,10 +1019,18 @@ async function handleFiles(files) {
   renderLibrary();
 }
 
-fileInput.addEventListener('change', e => {
+fileInput?.addEventListener('change', e => {
   const files = Array.from(e.target.files);
   fileInput.value = '';
   handleFiles(files);
+});
+
+$('#btn-upload')?.addEventListener('click', () => {
+  fileInput?.click();
+});
+
+$('#empty-state')?.addEventListener('click', () => {
+  fileInput?.click();
 });
 
 /* ---- DRAG & DROP FILES ---- */
