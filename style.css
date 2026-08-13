@@ -117,10 +117,6 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 
   /* ========== MOBILE BOTTOM NAVIGATION ========== */
   
-  .mobile-dock-tg, .mobile-dock-export {
-    display: none;
-  }
-
   .mobile-bottom-bar{
     display:flex;position:fixed;bottom:0;left:0;width:100%;
     height:calc(56px + env(safe-area-inset-bottom));
@@ -139,6 +135,9 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
     border-radius:10px;cursor:pointer;
     transition:all .2s;position:relative;
     -webkit-tap-highlight-color:transparent
+  }
+  .mobile-dock-tg, .mobile-dock-export {
+    display: none !important;
   }
   .mobile-tab-btn svg{width:20px;height:20px;transition:color .2s}
   .mobile-tab-btn.active{color:var(--accent);background:var(--accent-light)}
