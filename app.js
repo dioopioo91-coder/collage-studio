@@ -1226,6 +1226,10 @@ $('#btn-add-all').addEventListener('click', () => {
   renderCollage();
 });
 $('#btn-clear-lib').addEventListener('click', async () => {
+  const msg = currentLang === 'ru'
+    ? 'Вы уверены? Все изображения и холст будут удалены!'
+    : 'Are you sure? All images and canvas will be deleted!';
+  if (!confirm(msg)) return;
   canvasCells=[]; selectedIdx=-1; hideInspector();
   for (const item of library) if (item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
   library=[]; await dbClear(); renderLibrary(); renderCollage();
