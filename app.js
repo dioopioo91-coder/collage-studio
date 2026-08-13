@@ -1099,7 +1099,7 @@ async function handleFiles(files) {
   }
 }
 
-// Single global file input change handler
+// Single global file input change handler — triggered by <label for="global-file-input"> natively
 if (globalFileInput) {
   globalFileInput.addEventListener('change', e => {
     console.log('[Upload] Global input change event fired, files:', e.target.files?.length);
@@ -1107,41 +1107,9 @@ if (globalFileInput) {
     globalFileInput.value = ''; // Reset so same file can be re-selected
     if (files.length > 0) handleFiles(files);
   });
+  console.log('[Upload] Global file input ready');
 } else {
   console.error('[Upload] CRITICAL: #global-file-input not found in DOM!');
-}
-
-// Helper: trigger file picker from the global input
-function triggerFileUpload() {
-  console.log('[Upload] triggerFileUpload called');
-  if (globalFileInput) {
-    globalFileInput.value = ''; // Reset first
-    globalFileInput.click();
-  } else {
-    console.error('[Upload] Cannot trigger — globalFileInput missing');
-  }
-}
-
-// Wire up Upload button
-const btnUpload = $('#btn-upload');
-if (btnUpload) {
-  btnUpload.addEventListener('click', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('[Upload] btn-upload clicked');
-    triggerFileUpload();
-  });
-}
-
-// Wire up empty canvas area
-const emptyStateEl = $('#empty-state');
-if (emptyStateEl) {
-  emptyStateEl.style.cursor = 'pointer';
-  emptyStateEl.addEventListener('click', e => {
-    e.preventDefault();
-    console.log('[Upload] empty-state clicked');
-    triggerFileUpload();
-  });
 }
 
 /* ---- DRAG & DROP FILES ---- */
