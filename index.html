@@ -89,13 +89,23 @@
 
         <!-- Zoom & Pan Controls (Bottom Center) -->
         <div class="zoom-controls">
-          <button class="icon-btn active" id="btn-select-tool" title="Select Tool (Cursor)">↖</button>
-          <button class="icon-btn" id="btn-pan-tool" title="Pan Canvas (Hand ✋)">✋</button>
+          <button class="icon-btn active" id="btn-select-tool" title="Select Tool">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-pan-tool" title="Pan Canvas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v9"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          </button>
           <div class="tool-divider"></div>
-          <button class="icon-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+          <button class="icon-btn" id="btn-zoom-out" title="Zoom Out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
           <span class="zoom-val" id="zoom-val">100%</span>
-          <button class="icon-btn" id="btn-zoom-in" title="Zoom In">+</button>
-          <button class="icon-btn" id="btn-zoom-reset" title="Reset Zoom (100%)">⟲</button>
+          <button class="icon-btn" id="btn-zoom-in" title="Zoom In">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-zoom-reset" title="Reset Zoom (100%)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
         </div>
       </main>
 

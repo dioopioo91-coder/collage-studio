@@ -477,7 +477,7 @@ const interaction = {
 
 // Clicking empty canvas deselects and hides inspector panel!
 viewport.addEventListener('pointerdown', e => {
-  // Check for canvas panning trigger
+  // Check for canvas panning trigger (Middle click = 1, Right click = 2, Space, Hand tool)
   if (panToolActive || isSpacePressed || e.button === 1 || e.button === 2) {
     isPanningCanvas = true;
     panStartX = e.clientX;
@@ -487,6 +487,7 @@ viewport.addEventListener('pointerdown', e => {
     viewport.style.cursor = 'grabbing';
     viewport.setPointerCapture(e.pointerId);
     e.preventDefault();
+    e.stopPropagation();
     return;
   }
 
@@ -495,14 +496,14 @@ viewport.addEventListener('pointerdown', e => {
     hideInspector();
     renderCollage();
   }
-});
+}, true);
 
 viewport.addEventListener('contextmenu', e => {
   if (isPanningCanvas || panToolActive) e.preventDefault();
 });
 
 collage.addEventListener('pointerdown', e => {
-  if (isPanningCanvas || panToolActive || isSpacePressed) return;
+  if (e.button !== 0 || isPanningCanvas || panToolActive || isSpacePressed) return;
 
   const rbHandle = e.target.closest('.region-box-handle');
   const rbBox    = e.target.closest('.region-box');
