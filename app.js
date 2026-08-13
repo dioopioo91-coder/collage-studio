@@ -1090,9 +1090,10 @@ function getActiveCell() {
 }
 
 function refreshImageEffects() {
-  if (isSingleEditorMode) {
+  if (editorOverlay && !editorOverlay.hasAttribute('hidden')) {
     renderEditorImage();
-  } else {
+  }
+  if (!isSingleEditorMode) {
     renderCollage();
   }
 }
@@ -2304,10 +2305,11 @@ editorViewport?.addEventListener('pointerdown', e => {
   const rbBox    = e.target.closest('.region-box');
   const cell = getActiveCell();
 
+  // 1-FINGER TOUCH / CLICK ON REGION BOX OR HANDLES
   if (rbBox && cell && activePointers.length === 0) {
     const effectKey = rbBox.dataset.effectKey || 'lines';
     const imgWrap = rbBox.closest('.cell-img-wrapper');
-    const wr = imgWrap.getBoundingClientRect();
+    const wr = imgWrap ? imgWrap.getBoundingClientRect() : { width: 100, height: 100 };
     const bs = cell.adj[effectKey].box || { x:10, y:10, w:80, h:80 };
 
     interaction.active = true;
@@ -2319,26 +2321,30 @@ editorViewport?.addEventListener('pointerdown', e => {
     interaction.startBoxX = bs.x; interaction.startBoxY = bs.y;
     interaction.startBoxW = bs.w; interaction.startBoxH = bs.h;
     interaction.wrapW = wr.width || 100; interaction.wrapH = wr.height || 100;
-    editorViewport.setPointerCapture(e.pointerId);
+    try { editorViewport.setPointerCapture(e.pointerId); } catch(_){}
     e.preventDefault();
     return;
   }
 
   activePointers.push(e);
-  if (activePointers.length === 1) {
+
+  if (activePointers.length === 2) {
+    // 2-FINGERS GESTURE: Pan & Pinch-to-zoom the whole image
+    interaction.active = false;
     isPanningEditor = true;
-    edPanStartX = e.clientX; edPanStartY = e.clientY;
-    edPanInitX = editorPanX; edPanInitY = editorPanY;
-    editorViewport.style.cursor = 'grabbing';
-  } else if (activePointers.length === 2) {
-    isPanningEditor = false;
     const p1 = activePointers[0], p2 = activePointers[1];
     prevDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
     startScale = editorScale;
     startMidX = (p1.clientX + p2.clientX)/2; startMidY = (p1.clientY + p2.clientY)/2;
     startPanX = editorPanX; startPanY = editorPanY;
+  } else if (activePointers.length === 1 && e.pointerType === 'mouse') {
+    // Desktop mouse: 1-click drag pans the image if not on region box
+    isPanningEditor = true;
+    edPanStartX = e.clientX; edPanStartY = e.clientY;
+    edPanInitX = editorPanX; edPanInitY = editorPanY;
+    editorViewport.style.cursor = 'grabbing';
   }
-  editorViewport.setPointerCapture(e.pointerId);
+  try { editorViewport.setPointerCapture(e.pointerId); } catch(_){}
   e.preventDefault();
 });
 
@@ -2347,6 +2353,7 @@ editorViewport?.addEventListener('pointermove', e => {
   if (idx >= 0) activePointers[idx] = e;
   const cell = getActiveCell();
 
+  // 1-FINGER REGION BOX MANIPULATION
   if (interaction.active && cell) {
     const dx = e.clientX - interaction.startMouseX;
     const dy = e.clientY - interaction.startMouseY;
@@ -2388,16 +2395,20 @@ editorViewport?.addEventListener('pointermove', e => {
     return;
   }
 
-  if (activePointers.length === 1 && isPanningEditor) {
-    editorPanX = edPanInitX + (e.clientX - edPanStartX) / editorScale;
-    editorPanY = edPanInitY + (e.clientY - edPanStartY) / editorScale;
-    updateEditorTransform();
-  } else if (activePointers.length === 2) {
+  // 2-FINGERS (Touch) OR 1-Mouse Drag IMAGE PANNING & PINCH-ZOOMING
+  if (activePointers.length === 2) {
     const p1 = activePointers[0], p2 = activePointers[1];
     const cd = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-    editorScale = Math.max(0.4, Math.min(4.0, Math.round(startScale * (cd / prevDiff) * 100) / 100));
+    if (prevDiff > 0) {
+      editorScale = Math.max(0.4, Math.min(4.0, Math.round(startScale * (cd / prevDiff) * 100) / 100));
+    }
     const cmx = (p1.clientX + p2.clientX)/2, cmy = (p1.clientY + p2.clientY)/2;
-    editorPanX = startPanX + (cmx - startMidX); editorPanY = startPanY + (cmy - startMidY);
+    editorPanX = startPanX + (cmx - startMidX);
+    editorPanY = startPanY + (cmy - startMidY);
+    updateEditorTransform();
+  } else if (activePointers.length === 1 && isPanningEditor && e.pointerType === 'mouse') {
+    editorPanX = edPanInitX + (e.clientX - edPanStartX) / editorScale;
+    editorPanY = edPanInitY + (e.clientY - edPanStartY) / editorScale;
     updateEditorTransform();
   }
 });
