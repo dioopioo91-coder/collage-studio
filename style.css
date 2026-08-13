@@ -19,6 +19,12 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .logo{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;letter-spacing:.04em}
 .logo b{color:var(--accent)}.logo svg{color:var(--accent)}
 .badge{background:var(--accent-light);color:var(--accent);border:1px solid rgba(254,240,138,.3);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+
+/* LANGUAGE SWITCHER */
+.lang-switcher{display:flex;align-items:center;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:2px;gap:2px}
+.lang-btn{background:none;border:none;color:var(--text-sec);font-size:10px;font-weight:700;font-family:var(--font-mono);padding:2px 6px;border-radius:4px;cursor:pointer;transition:all .15s}
+.lang-btn.active{background:var(--accent);color:#0f0f12}
+
 .tool-item{display:flex;align-items:center;gap:6px}
 .tool-label{font-size:10px;font-weight:700;color:var(--text-sec);letter-spacing:.08em;font-family:var(--font-mono)}
 .tool-divider{width:1px;height:18px;background:var(--border)}
@@ -56,6 +62,10 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 
 /* CANVAS VIEWPORT — simple centering, no nested flex sizing tricks */
 .canvas-viewport{flex:1;background:var(--bg-app);background-image:radial-gradient(var(--border) 1px,transparent 1px);background-size:22px 22px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:20px}
+
+/* ZOOM CONTROLS */
+.zoom-controls{position:absolute;bottom:16px;left:16px;display:flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:4px 6px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.zoom-val{font-size:11px;font-weight:700;font-family:var(--font-mono);color:var(--accent);min-width:40px;text-align:center;user-select:none}
 
 /* CANVAS FRAME — EXPLICIT PIXEL W/H set by JS, position:relative for abs children */
 .canvas-frame{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px var(--border);background:#121215;flex-shrink:0;flex-grow:0}
@@ -149,17 +159,19 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .toggle-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;cursor:pointer;user-select:none}
 .toggle-label input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
 .mini-select{background:var(--bg-app);color:var(--text-sec);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;font-family:var(--font-sans);outline:none;cursor:pointer}
+.mode-select{flex:1;padding:4px 6px;font-size:11px;font-weight:700;background:var(--bg-card);color:var(--text-main);border-color:var(--border-subtle)}
 .color-val-box{display:flex;align-items:center;gap:8px;flex:1}
 .color-picker-input{width:28px;height:24px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;padding:0}
 .hex-val{font-size:10px;font-weight:700;font-family:var(--font-mono);color:var(--text-sec)}
 
 /* OVERLAY LAYERS & REGION SELECTION BOX */
 .cell-img-wrapper{position:relative;width:100%;flex:1;min-height:0;overflow:hidden}
-.cell-lines-overlay{position:absolute;pointer-events:none;z-index:4}
-.cell-noise-overlay{position:absolute;pointer-events:none;z-index:5;mix-blend-mode:overlay}
+.cell-lines-overlay{position:absolute;pointer-events:none;z-index:4;overflow:hidden}
+.cell-noise-overlay{position:absolute;pointer-events:none;z-index:5;mix-blend-mode:overlay;overflow:hidden}
 
 /* REGION SELECTION BOX */
-.region-box{position:absolute;border:2px dashed var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.3);z-index:10;box-sizing:border-box;cursor:move}
+.region-box{position:absolute;border:2px dashed var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.35);z-index:10;box-sizing:border-box;cursor:move}
+.region-box-badge{position:absolute;top:-20px;left:0;background:var(--accent);color:#0f0f12;font-size:9px;font-weight:800;font-family:var(--font-mono);padding:1px 6px;border-radius:3px;pointer-events:none;letter-spacing:.05em;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .region-box-handle{position:absolute;width:8px;height:8px;background:#ffffff;border:1.5px solid var(--accent);border-radius:2px;z-index:12}
 .rb-nw{top:-4px;left:-4px;cursor:nwse-resize}
 .rb-ne{top:-4px;right:-4px;cursor:nesw-resize}

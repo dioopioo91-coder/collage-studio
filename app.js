@@ -100,6 +100,8 @@ function drawLinesOnCanvas(canvas, linesObj, width, height) {
   ctx.clearRect(0, 0, w, h);
 
   ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
+
   ctx.strokeStyle = linesObj.color || '#ffff00';
   ctx.lineWidth = Math.max(1, linesObj.size || 2);
   ctx.globalAlpha = (linesObj.opacity !== undefined ? linesObj.opacity : 80) / 100;
@@ -1163,6 +1165,153 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 /* ---- WINDOW RESIZE ---- */
 window.addEventListener('resize', () => { updateFrameSize(); renderCollage(); });
 
+/* ============================================================
+   CANVAS ZOOM & PAN SYSTEM
+   ============================================================ */
+let zoomScale = 1.0;
+let zoomPanX = 0;
+let zoomPanY = 0;
+
+function updateZoomTransform() {
+  frame.style.transform = `scale(${zoomScale}) translate(${zoomPanX}px, ${zoomPanY}px)`;
+  const zoomValEl = $('#zoom-val');
+  if (zoomValEl) zoomValEl.textContent = Math.round(zoomScale * 100) + '%';
+}
+
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  zoomScale = Math.max(0.4, Math.min(3.0, Math.round((zoomScale + delta) * 10) / 10));
+  updateZoomTransform();
+}, { passive: false });
+
+$('#btn-zoom-in')?.addEventListener('click', () => {
+  zoomScale = Math.min(3.0, Math.round((zoomScale + 0.1) * 10) / 10);
+  updateZoomTransform();
+});
+$('#btn-zoom-out')?.addEventListener('click', () => {
+  zoomScale = Math.max(0.4, Math.round((zoomScale - 0.1) * 10) / 10);
+  updateZoomTransform();
+});
+$('#btn-zoom-reset')?.addEventListener('click', () => {
+  zoomScale = 1.0; zoomPanX = 0; zoomPanY = 0;
+  updateZoomTransform();
+});
+
+viewport.addEventListener('dblclick', e => {
+  if (e.target === viewport || e.target === frame) {
+    zoomScale = 1.0; zoomPanX = 0; zoomPanY = 0;
+    updateZoomTransform();
+  }
+});
+
+/* ============================================================
+   INTERNATIONALIZATION (i18n) SYSTEM — RU / EN
+   ============================================================ */
+const i18n = {
+  ru: {
+    ratio: "ПРОПОРЦИИ",
+    gap: "ОТСТУП",
+    radius: "СКРУГЛЕНИЕ",
+    tag: "ТЕГ",
+    stroke: "РАМКА",
+    clear: "Очистить",
+    export: "Экспорт",
+    assets: "АССЕТЫ",
+    upload: "Загрузить фото",
+    noImages: "Нет изображений",
+    tabColor: "Цвет",
+    tabEffects: "Линии & Шум",
+    brightness: "Яркость",
+    contrast: "Контраст",
+    red: "Красный",
+    green: "Зелёный",
+    blue: "Синий",
+    reset: "Сброс",
+    delete: "Удалить",
+    lines: "Линии",
+    noise: "Шум",
+    area: "Область",
+    fullPhoto: "Всё фото",
+    selectedRegion: "Выделенный участок",
+    angle: "Угол",
+    spacing: "Отступ",
+    size: "Размер",
+    opacity: "Прозр.",
+    color: "Цвет",
+    level: "Уровень",
+    exportTitle: "Экспорт коллажа",
+    resolution: "РАЗРЕШЕНИЕ",
+    format: "ФОРМАТ",
+    startDownload: "Скачать",
+    done: "Готово",
+    emptyNotice: "Перетащите фото или выберите из библиотеки"
+  },
+  en: {
+    ratio: "RATIO",
+    gap: "GAP",
+    radius: "RADIUS",
+    tag: "TAG",
+    stroke: "STROKE",
+    clear: "Clear",
+    export: "Export",
+    assets: "ASSETS",
+    upload: "Upload Images",
+    noImages: "No images yet",
+    tabColor: "Color",
+    tabEffects: "Lines & Noise",
+    brightness: "Brightness",
+    contrast: "Contrast",
+    red: "Red",
+    green: "Green",
+    blue: "Blue",
+    reset: "Reset",
+    delete: "Delete",
+    lines: "Lines",
+    noise: "Noise",
+    area: "Area",
+    fullPhoto: "Full photo",
+    selectedRegion: "Selected Region",
+    angle: "Angle",
+    spacing: "Spacing",
+    size: "Size",
+    opacity: "Opacity",
+    color: "Color",
+    level: "Amount",
+    exportTitle: "Export Collage",
+    resolution: "RESOLUTION",
+    format: "FORMAT",
+    startDownload: "Start Download",
+    done: "Done",
+    emptyNotice: "Drop images or click from library"
+  }
+};
+
+let currentLang = localStorage.getItem('collage_lang') || 'ru';
+
+function applyLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('collage_lang', lang);
+
+  $$('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  const dict = i18n[lang] || i18n.ru;
+  $$('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (dict[key]) {
+      el.textContent = dict[key];
+    }
+  });
+}
+
+$$('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyLanguage(btn.dataset.lang);
+  });
+});
+
 /* ---- INIT ---- */
 (async function init() {
   await openDB();
@@ -1175,4 +1324,5 @@ window.addEventListener('resize', () => { updateFrameSize(); renderCollage(); })
   renderLibrary();
   updateFrameSize();
   renderCollage();
+  applyLanguage(currentLang);
 })();

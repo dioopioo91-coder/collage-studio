@@ -19,11 +19,15 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
           <span>COLLAGE<b>STUDIO</b></span>
         </div>
+        <div class="lang-switcher">
+          <button class="lang-btn active" data-lang="ru">RU</button>
+          <button class="lang-btn" data-lang="en">EN</button>
+        </div>
         <span class="badge" id="canvas-info">0 images</span>
       </div>
       <div class="navbar-center">
         <div class="tool-item">
-          <span class="tool-label">RATIO</span>
+          <span class="tool-label" data-i18n="ratio">ПРОПОРЦИИ</span>
           <select id="aspect-ratio">
             <option value="16:9" selected>16 : 9</option>
             <option value="21:9">21 : 9</option>
@@ -36,31 +40,27 @@
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label">GAP</span>
+          <span class="tool-label" data-i18n="gap">ОТСТУП</span>
           <input type="range" id="collage-gap" min="0" max="40" value="10" class="figma-slider">
           <input type="number" id="gap-num" min="0" max="40" value="10" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label">RADIUS</span>
+          <span class="tool-label" data-i18n="radius">СКРУГЛЕНИЕ</span>
           <input type="range" id="border-radius" min="0" max="36" value="10" class="figma-slider">
           <input type="number" id="radius-num" min="0" max="36" value="10" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label">TAG</span>
+          <span class="tool-label" data-i18n="tag">ТЕГ</span>
           <input type="range" id="tag-size" min="12" max="32" value="18" class="figma-slider">
           <input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label">FRAME</span>
+          <span class="tool-label" data-i18n="stroke">РАМКА</span>
           <input type="color" id="frame-color" value="#ffffff" class="color-picker">
           <span class="tool-val" id="frame-color-val">#FFF</span>
-        </div>
-        <div class="tool-divider"></div>
-        <div class="tool-item">
-          <span class="tool-label">STROKE</span>
           <input type="range" id="frame-stroke" min="1" max="8" value="3" class="figma-slider">
           <input type="number" id="frame-stroke-num" min="1" max="8" value="3" class="val-num-input">
         </div>
@@ -70,8 +70,8 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
           <span>@camtarssonai</span>
         </a>
-        <button class="btn btn-secondary" id="btn-clear-canvas">Clear</button>
-        <button class="btn btn-primary" id="btn-export">Export</button>
+        <button class="btn btn-secondary" id="btn-clear-canvas" data-i18n="clear">Очистить</button>
+        <button class="btn btn-primary" id="btn-export" data-i18n="export">Экспорт</button>
       </div>
     </header>
 
@@ -83,15 +83,23 @@
           <div class="collage-canvas" id="collage"></div>
           <div class="empty-canvas" id="empty-state">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-            <h3>Drop images or click from library</h3>
+            <h3 data-i18n="emptyNotice">Перетащите фото или выберите из библиотеки</h3>
           </div>
+        </div>
+
+        <!-- Zoom Controls -->
+        <div class="zoom-controls">
+          <button class="icon-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+          <span class="zoom-val" id="zoom-val">100%</span>
+          <button class="icon-btn" id="btn-zoom-in" title="Zoom In">+</button>
+          <button class="icon-btn" id="btn-zoom-reset" title="Reset Zoom (100%)">⟲</button>
         </div>
       </main>
 
       <aside class="figma-sidebar">
         <section class="sidebar-section library-section">
           <div class="section-header">
-            <div class="section-title">ASSETS <span class="count-pill" id="lib-count">0</span></div>
+            <div class="section-title"><span data-i18n="assets">АССЕТЫ</span> <span class="count-pill" id="lib-count">0</span></div>
             <div class="section-actions">
               <button class="icon-btn" id="btn-add-all" title="Add all">+</button>
               <button class="icon-btn danger" id="btn-clear-lib" title="Clear">×</button>
@@ -99,19 +107,19 @@
           </div>
           <div class="upload-dropzone">
             <input type="file" id="file-input" multiple accept="image/*" hidden>
-            <button class="btn btn-upload" id="btn-upload">Upload Images</button>
+            <button class="btn btn-upload" id="btn-upload" data-i18n="upload">Загрузить фото</button>
           </div>
           <div class="library-scroll">
             <div class="library-grid" id="library-grid"></div>
-            <div class="library-empty" id="library-empty">No images yet</div>
+            <div class="library-empty" id="library-empty" data-i18n="noImages">Нет изображений</div>
           </div>
         </section>
 
         <section class="sidebar-section inspector-section" id="adjustments-panel" hidden>
           <div class="section-header border-top">
             <div class="inspector-tabs">
-              <button class="tab-btn active" data-tab="tab-color">Цвет</button>
-              <button class="tab-btn" data-tab="tab-effects">Линии & Шум</button>
+              <button class="tab-btn active" data-tab="tab-color" data-i18n="tabColor">Цвет</button>
+              <button class="tab-btn" data-tab="tab-effects" data-i18n="tabEffects">Линии & Шум</button>
             </div>
             <button class="icon-btn" id="btn-deselect">×</button>
           </div>
@@ -119,13 +127,13 @@
             <!-- TAB 1: COLOR -->
             <div class="tab-content active" id="tab-color">
               <div class="prop-group">
-                <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label" data-i18n="brightness">Яркость</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label" data-i18n="contrast">Контраст</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
               </div>
               <div class="prop-group">
-                <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-r" data-i18n="red">Красный</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-g" data-i18n="green">Зелёный</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-b" data-i18n="blue">Синий</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
               </div>
             </div>
 
@@ -134,39 +142,45 @@
               <!-- LINES SECTION -->
               <div class="effect-card">
                 <div class="effect-header">
-                  <label class="toggle-label"><input type="checkbox" id="lines-enable"> <span>Линии</span></label>
-                  <select id="lines-mode" class="mini-select">
-                    <option value="full">Всё фото</option>
-                    <option value="region">Выделенный участок</option>
-                  </select>
+                  <label class="toggle-label"><input type="checkbox" id="lines-enable"> <span data-i18n="lines">Линии</span></label>
                 </div>
                 <div class="effect-body" id="lines-body">
-                  <div class="prop-row"><span class="prop-label">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="figma-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="figma-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="figma-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label">Прозр.</span><div class="slider-val-box"><input type="range" id="lines-opacity" min="0" max="100" value="80" class="figma-slider"><input type="number" id="lines-opacity-num" min="0" max="100" value="80" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label">Цвет</span><div class="color-val-box"><input type="color" id="lines-color" value="#ffff00" class="color-picker-input"><span id="lines-color-hex" class="hex-val">#FFFF00</span></div></div>
+                  <div class="prop-row">
+                    <span class="prop-label" data-i18n="area">Область</span>
+                    <select id="lines-mode" class="mini-select mode-select">
+                      <option value="full" data-i18n="fullPhoto">Всё фото</option>
+                      <option value="region" data-i18n="selectedRegion">Выделенный участок</option>
+                    </select>
+                  </div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="angle">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="figma-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="spacing">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="figma-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="size">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="figma-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="opacity">Прозр.</span><div class="slider-val-box"><input type="range" id="lines-opacity" min="0" max="100" value="80" class="figma-slider"><input type="number" id="lines-opacity-num" min="0" max="100" value="80" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="color">Цвет</span><div class="color-val-box"><input type="color" id="lines-color" value="#ffff00" class="color-picker-input"><span id="lines-color-hex" class="hex-val">#FFFF00</span></div></div>
                 </div>
               </div>
 
               <!-- NOISE SECTION -->
               <div class="effect-card">
                 <div class="effect-header">
-                  <label class="toggle-label"><input type="checkbox" id="noise-enable"> <span>Шум</span></label>
-                  <select id="noise-mode" class="mini-select">
-                    <option value="full">Всё фото</option>
-                    <option value="region">Выделенный участок</option>
-                  </select>
+                  <label class="toggle-label"><input type="checkbox" id="noise-enable"> <span data-i18n="noise">Шум</span></label>
                 </div>
                 <div class="effect-body" id="noise-body">
-                  <div class="prop-row"><span class="prop-label">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="figma-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
+                  <div class="prop-row">
+                    <span class="prop-label" data-i18n="area">Область</span>
+                    <select id="noise-mode" class="mini-select mode-select">
+                      <option value="full" data-i18n="fullPhoto">Всё фото</option>
+                      <option value="region" data-i18n="selectedRegion">Выделенный участок</option>
+                    </select>
+                  </div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="level">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="figma-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
                 </div>
               </div>
             </div>
 
             <div class="prop-actions">
-              <button class="btn btn-secondary btn-full" id="btn-reset-adj">Reset</button>
-              <button class="btn btn-danger btn-full" id="btn-remove-cell">Delete</button>
+              <button class="btn btn-secondary btn-full" id="btn-reset-adj" data-i18n="reset">Reset</button>
+              <button class="btn btn-danger btn-full" id="btn-remove-cell" data-i18n="delete">Delete</button>
             </div>
           </div>
         </section>
@@ -178,13 +192,13 @@
   <div class="modal-overlay" id="export-modal" hidden>
     <div class="figma-modal">
       <div class="modal-header">
-        <h2>Export Collage</h2>
+        <h2 data-i18n="exportTitle">Экспорт коллажа</h2>
         <button class="icon-btn" id="btn-modal-x">×</button>
       </div>
 
       <div class="export-form" id="export-form-step">
         <div class="form-group">
-          <label class="form-label">RESOLUTION</label>
+          <label class="form-label" data-i18n="resolution">РАЗРЕШЕНИЕ</label>
           <div class="preset-grid">
             <label class="preset-btn"><input type="radio" name="res-preset" value="3840"> <span>4K</span></label>
             <label class="preset-btn"><input type="radio" name="res-preset" value="7680" checked> <span>8K</span></label>
@@ -194,20 +208,20 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">FORMAT</label>
+          <label class="form-label" data-i18n="format">ФОРМАТ</label>
           <div class="format-toggle">
             <label class="format-btn"><input type="radio" name="export-fmt" value="image/jpeg" checked> <span>JPEG</span></label>
             <label class="format-btn"><input type="radio" name="export-fmt" value="image/png"> <span>PNG</span></label>
           </div>
         </div>
 
-        <button class="btn btn-primary btn-full btn-large" id="btn-start-export">Start Download</button>
+        <button class="btn btn-primary btn-full btn-large" id="btn-start-export" data-i18n="startDownload">Скачать</button>
       </div>
 
       <div class="export-progress-step" id="export-progress-step" hidden>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="export-progress"></div></div>
-        <p class="modal-status" id="export-status">Building...</p>
-        <button class="btn btn-primary btn-full" id="btn-close-modal" hidden>Done</button>
+        <p class="modal-status" id="export-status">Preparing...</p>
+        <button class="btn btn-primary btn-full" id="btn-close-modal" data-i18n="done" hidden>Готово</button>
       </div>
     </div>
   </div>
