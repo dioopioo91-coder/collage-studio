@@ -867,6 +867,41 @@ function autoEnableNoise() {
   $('#noise-enable').checked = true;
 }
 
+// Robust Segmented Mode Button Listener Helper
+function attachSegmentedListener(containerId, effectKey) {
+  const container = $('#' + containerId);
+  if (!container) return;
+
+  const handler = e => {
+    const btn = e.target.closest('.segment-btn');
+    if (!btn) return;
+    e.stopPropagation();
+
+    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+
+    const mode = btn.dataset.mode;
+    if (!mode) return;
+
+    if (effectKey === 'lines') {
+      autoEnableLines();
+      canvasCells[selectedIdx].adj.lines.mode = mode;
+    } else if (effectKey === 'noise') {
+      autoEnableNoise();
+      canvasCells[selectedIdx].adj.noise.mode = mode;
+    }
+
+    syncSegmentedBtns(containerId, mode);
+    renderCollage();
+  };
+
+  container.addEventListener('click', handler);
+  container.addEventListener('pointerdown', e => {
+    if (e.target.closest('.segment-btn')) {
+      e.stopPropagation();
+    }
+  });
+}
+
 // Lines Effect Listeners
 $('#lines-enable').addEventListener('change', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
@@ -874,16 +909,7 @@ $('#lines-enable').addEventListener('change', e => {
   renderCollage();
 });
 
-$$('#lines-mode-seg .segment-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-    autoEnableLines();
-    const mode = btn.dataset.mode;
-    canvasCells[selectedIdx].adj.lines.mode = mode;
-    syncSegmentedBtns('lines-mode-seg', mode);
-    renderCollage();
-  });
-});
+attachSegmentedListener('lines-mode-seg', 'lines');
 
 bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
@@ -925,16 +951,7 @@ $('#noise-enable').addEventListener('change', e => {
   renderCollage();
 });
 
-$$('#noise-mode-seg .segment-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-    autoEnableNoise();
-    const mode = btn.dataset.mode;
-    canvasCells[selectedIdx].adj.noise.mode = mode;
-    syncSegmentedBtns('noise-mode-seg', mode);
-    renderCollage();
-  });
-});
+attachSegmentedListener('noise-mode-seg', 'noise');
 
 bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
