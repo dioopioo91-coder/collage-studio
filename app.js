@@ -938,15 +938,18 @@ collage.addEventListener('pointerup', e => {
 
   if (mode === 'swap' && wasDragged && target >= 0) {
     const a = idx, b = target;
-    const cellA = canvasCells[a], cellB = canvasCells[b];
-    const tmpAsset = cellA.assetId, tmpAdj = {...cellA.adj};
-    cellA.assetId = cellB.assetId; cellA.adj = {...cellB.adj};
-    cellB.assetId = tmpAsset; cellB.adj = tmpAdj;
-    cellA.fx = interaction.startFx; cellA.fy = interaction.startFy;
+    // Swap cells in array
+    const temp = canvasCells[a];
+    canvasCells[a] = canvasCells[b];
+    canvasCells[b] = temp;
+
+    // Automatically recalculate optimal justified layout so both images reshape to their aspect ratios!
+    redistributeLayout();
+    renderCollage();
     selectCell(b);
   } else if (mode === 'swap' && wasDragged && target < 0) {
-    canvasCells[idx].fx = interaction.startFx;
-    canvasCells[idx].fy = interaction.startFy;
+    // Restore layout if dropped outside
+    redistributeLayout();
     renderCollage();
   } else if (!wasDragged) {
     selectCell(idx);
