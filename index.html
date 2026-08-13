@@ -109,19 +109,61 @@
 
         <section class="sidebar-section inspector-section" id="adjustments-panel" hidden>
           <div class="section-header border-top">
-            <div class="section-title" id="adj-title">PROPERTIES</div>
+            <div class="inspector-tabs">
+              <button class="tab-btn active" data-tab="tab-color">Цвет</button>
+              <button class="tab-btn" data-tab="tab-effects">Линии & Шум</button>
+            </div>
             <button class="icon-btn" id="btn-deselect">×</button>
           </div>
           <div class="inspector-controls">
-            <div class="prop-group">
-              <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-              <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+            <!-- TAB 1: COLOR -->
+            <div class="tab-content active" id="tab-color">
+              <div class="prop-group">
+                <div class="prop-row"><span class="prop-label">Brightness</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label">Contrast</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+              </div>
+              <div class="prop-group">
+                <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+              </div>
             </div>
-            <div class="prop-group">
-              <div class="prop-row"><span class="prop-label color-r">Red</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-              <div class="prop-row"><span class="prop-label color-g">Green</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-              <div class="prop-row"><span class="prop-label color-b">Blue</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+
+            <!-- TAB 2: EFFECTS (LINES & NOISE) -->
+            <div class="tab-content" id="tab-effects">
+              <!-- LINES SECTION -->
+              <div class="effect-card">
+                <div class="effect-header">
+                  <label class="toggle-label"><input type="checkbox" id="lines-enable"> <span>Линии</span></label>
+                  <select id="lines-mode" class="mini-select">
+                    <option value="full">Всё фото</option>
+                    <option value="region">Выделенный участок</option>
+                  </select>
+                </div>
+                <div class="effect-body" id="lines-body">
+                  <div class="prop-row"><span class="prop-label">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="figma-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="figma-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="figma-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label">Прозр.</span><div class="slider-val-box"><input type="range" id="lines-opacity" min="0" max="100" value="80" class="figma-slider"><input type="number" id="lines-opacity-num" min="0" max="100" value="80" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label">Цвет</span><div class="color-val-box"><input type="color" id="lines-color" value="#ffff00" class="color-picker-input"><span id="lines-color-hex" class="hex-val">#FFFF00</span></div></div>
+                </div>
+              </div>
+
+              <!-- NOISE SECTION -->
+              <div class="effect-card">
+                <div class="effect-header">
+                  <label class="toggle-label"><input type="checkbox" id="noise-enable"> <span>Шум</span></label>
+                  <select id="noise-mode" class="mini-select">
+                    <option value="full">Всё фото</option>
+                    <option value="region">Выделенный участок</option>
+                  </select>
+                </div>
+                <div class="effect-body" id="noise-body">
+                  <div class="prop-row"><span class="prop-label">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="figma-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
+                </div>
+              </div>
             </div>
+
             <div class="prop-actions">
               <button class="btn btn-secondary btn-full" id="btn-reset-adj">Reset</button>
               <button class="btn btn-danger btn-full" id="btn-remove-cell">Delete</button>

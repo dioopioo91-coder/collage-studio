@@ -1,6 +1,7 @@
 /* ============================================================
    Collage Studio — Application Logic
-   PROPORTIONAL CORNER RESIZING, ZERO-VOID FRAMES, THICK SLIDERS
+   PROPORTIONAL CORNER RESIZING, ZERO-VOID FRAMES, THICK SLIDERS,
+   LEGO LAYOUT, LINES & NOISE EFFECTS WITH REGION SELECTION
    ============================================================ */
 'use strict';
 
@@ -33,9 +34,31 @@ let selectedIdx = -1;
 let frameColor  = '#ffffff';
 let strokeWidth = 3;
 
-const defaultAdj = () => ({ brightness:100, contrast:100, r:100, g:100, b:100 });
+const defaultAdj = () => ({
+  brightness: 100,
+  contrast: 100,
+  r: 100,
+  g: 100,
+  b: 100,
+  lines: {
+    enabled: false,
+    mode: 'full',      // 'full' | 'region'
+    angle: 0,
+    spacing: 30,
+    size: 2,
+    opacity: 80,
+    color: '#ffff00',  // yellow
+    box: { x: 10, y: 10, w: 80, h: 80 }
+  },
+  noise: {
+    enabled: false,
+    mode: 'full',      // 'full' | 'region'
+    amount: 30,
+    box: { x: 10, y: 10, w: 80, h: 80 }
+  }
+});
 
-/* ---- COLOR HELPERS ---- */
+/* ---- COLOR & EFFECT HELPERS ---- */
 function getContrastColor(hex) {
   const r = parseInt(hex.slice(1,3), 16);
   const g = parseInt(hex.slice(3,5), 16);
@@ -50,6 +73,32 @@ function getImageDims(url) {
     img.onerror = () => resolve({ w: 1, h: 1 });
     img.src = url;
   });
+}
+
+function generateNoiseDataUrl(amount) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(128, 128);
+  const data = imgData.data;
+  const alpha = (amount / 100) * 255;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = Math.random() * 255;
+    data[i] = v; data[i+1] = v; data[i+2] = v;
+    data[i+3] = Math.random() < 0.5 ? alpha * 0.8 : alpha * 0.3;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas.toDataURL();
+}
+
+function buildLinesStyle(lines) {
+  const angle = lines.angle || 0;
+  const spacing = lines.spacing || 30;
+  const size = lines.size || 2;
+  const color = lines.color || '#ffff00';
+  const opacity = (lines.opacity !== undefined ? lines.opacity : 80) / 100;
+  const bg = `repeating-linear-gradient(${angle}deg, ${color} 0px, ${color} ${size}px, transparent ${size}px, transparent ${spacing}px)`;
+  return { bg, opacity };
 }
 
 /* ---- DOM ---- */
@@ -107,27 +156,21 @@ function redistributeLayout() {
   const ratio = getRatio();
   const tagH = Math.round(tagSize * 1.6 + 6);
 
-  // Determine optimal columns count per row based on aspect ratio
   let cols;
   if (ratio < 0.75) {
-    // Vertical (9:16 portrait)
     cols = n === 1 ? 1 : 2;
   } else if (ratio < 1.1) {
-    // Square / 4:3
     cols = n <= 2 ? n : (n <= 4 ? 2 : 3);
   } else {
-    // Landscape (16:9, 21:9)
     cols = n <= 3 ? n : (n <= 6 ? 3 : 4);
   }
 
-  // Pack items like Lego blocks starting from top-left (gap, gap)
   let currentYPx = gap;
 
   for (let startIdx = 0; startIdx < n; startIdx += cols) {
     const rowCells = canvasCells.slice(startIdx, startIdx + cols);
     const countInRow = rowCells.length;
 
-    // Calculate card width for this row
     const itemWPx = Math.max(40, (fw - (cols + 1) * gap) / cols);
     let maxRowHPx = 0;
     const itemHeightsPx = [];
@@ -193,6 +236,13 @@ function renderCollage() {
   const n = canvasCells.length;
   emptyState.style.display = n === 0 ? 'flex' : 'none';
   collage.innerHTML = '';
+
+  // If no card is selected, make sure inspector panel is hidden
+  if (selectedIdx < 0 || selectedIdx >= n) {
+    selectedIdx = -1;
+    hideInspector();
+  }
+
   if (n === 0) { canvasInfo.textContent = '0 images'; return; }
   canvasInfo.textContent = n + ' image' + (n>1?'s':'');
 
@@ -203,6 +253,9 @@ function renderCollage() {
 
   for (let i = 0; i < n; i++) {
     const cell = canvasCells[i];
+    if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
+    if (!cell.adj.noise) cell.adj.noise = defaultAdj().noise;
+
     const asset = library.find(a => a.id === cell.assetId);
     if (!asset) continue;
 
@@ -232,7 +285,7 @@ function renderCollage() {
     inner.style.border = strokeWidth + 'px solid ' + frameColor;
     inner.style.borderRadius = radius + 'px';
 
-    // Tag (Header Bar — fixed tag name per index i)
+    // Tag (Header Bar)
     const tag = document.createElement('div');
     tag.className = 'cell-tag';
     tag.textContent = '@IMAGE' + (i + 1);
@@ -243,19 +296,88 @@ function renderCollage() {
     tag.style.color = contrastColor;
     inner.appendChild(tag);
 
-    // Image
+    // Image & Overlay Wrapper
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'cell-img-wrapper';
+    imgWrap.style.height = imgH + 'px';
+
     const img = document.createElement('img');
     img.className = 'cell-img';
     img.src = asset.thumbUrl;
     img.draggable = false;
-    img.style.height = imgH + 'px';
+    img.style.height = '100%';
     const filterVal = buildSVGFilter(cell, i);
     if (filterVal) img.style.filter = filterVal;
-    inner.appendChild(img);
+    imgWrap.appendChild(img);
 
+    // Lines Overlay
+    if (cell.adj.lines && cell.adj.lines.enabled) {
+      const linesObj = cell.adj.lines;
+      const linesDiv = document.createElement('div');
+      linesDiv.className = 'cell-lines-overlay';
+      const { bg, opacity } = buildLinesStyle(linesObj);
+      linesDiv.style.background = bg;
+      linesDiv.style.opacity = opacity;
+
+      if (linesObj.mode === 'region' && linesObj.box) {
+        linesDiv.style.left = linesObj.box.x + '%';
+        linesDiv.style.top = linesObj.box.y + '%';
+        linesDiv.style.width = linesObj.box.w + '%';
+        linesDiv.style.height = linesObj.box.h + '%';
+      } else {
+        linesDiv.style.left = '0'; linesDiv.style.top = '0'; linesDiv.style.width = '100%'; linesDiv.style.height = '100%';
+      }
+      imgWrap.appendChild(linesDiv);
+    }
+
+    // Noise Overlay
+    if (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.amount > 0) {
+      const noiseObj = cell.adj.noise;
+      const noiseDiv = document.createElement('div');
+      noiseDiv.className = 'cell-noise-overlay';
+      noiseDiv.style.backgroundImage = `url(${generateNoiseDataUrl(noiseObj.amount)})`;
+
+      if (noiseObj.mode === 'region' && noiseObj.box) {
+        noiseDiv.style.left = noiseObj.box.x + '%';
+        noiseDiv.style.top = noiseObj.box.y + '%';
+        noiseDiv.style.width = noiseObj.box.w + '%';
+        noiseDiv.style.height = noiseObj.box.h + '%';
+      } else {
+        noiseDiv.style.left = '0'; noiseDiv.style.top = '0'; noiseDiv.style.width = '100%'; noiseDiv.style.height = '100%';
+      }
+      imgWrap.appendChild(noiseDiv);
+    }
+
+    // Region Selection Box
+    if (i === selectedIdx) {
+      const activeEffectKey = (cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region') ? 'lines' :
+                              (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region') ? 'noise' : null;
+      if (activeEffectKey) {
+        const box = cell.adj[activeEffectKey].box || { x:10, y:10, w:80, h:80 };
+        const rBox = document.createElement('div');
+        rBox.className = 'region-box';
+        rBox.style.left = box.x + '%';
+        rBox.style.top = box.y + '%';
+        rBox.style.width = box.w + '%';
+        rBox.style.height = box.h + '%';
+        rBox.dataset.effectKey = activeEffectKey;
+
+        const corners = ['nw','ne','sw','se'];
+        for (const c of corners) {
+          const h = document.createElement('div');
+          h.className = `region-box-handle rb-${c}`;
+          h.dataset.rbHandle = c;
+          h.dataset.effectKey = activeEffectKey;
+          rBox.appendChild(h);
+        }
+        imgWrap.appendChild(rBox);
+      }
+    }
+
+    inner.appendChild(imgWrap);
     div.appendChild(inner);
 
-    // 4 CORNER RESIZE HANDLES ONLY
+    // 4 Corner Handles
     const corners = ['nw', 'ne', 'sw', 'se'];
     for (const c of corners) {
       const hDiv = document.createElement('div');
@@ -282,17 +404,56 @@ function renderCollage() {
 /* ---- INTERACTION SYSTEM ---- */
 const interaction = {
   active: false,
-  mode: null,       // 'move' | 'swap' | 'resize'
+  mode: null,       // 'move' | 'swap' | 'resize' | 'rb_move' | 'rb_resize'
   cellIdx: -1,
   startMouseX: 0, startMouseY: 0,
   startFx: 0, startFy: 0, startFw: 0, startFh: 0,
-  resizeEdge: '',   // 'nw','ne','sw','se'
+  resizeEdge: '',
   didDrag: false,
-  swapTarget: -1
+  swapTarget: -1,
+  rbEffectKey: '', rbEdge: '',
+  startBoxX: 0, startBoxY: 0, startBoxW: 0, startBoxH: 0,
+  wrapW: 100, wrapH: 100
 };
 
-// Pointer down → Start interaction based on clicked target
+// Clicking empty canvas deselects and hides inspector panel!
+viewport.addEventListener('pointerdown', e => {
+  if (e.target === viewport || e.target === frame || e.target === collage || e.target === emptyState) {
+    selectedIdx = -1;
+    hideInspector();
+    renderCollage();
+  }
+});
+
 collage.addEventListener('pointerdown', e => {
+  const rbHandle = e.target.closest('.region-box-handle');
+  const rbBox    = e.target.closest('.region-box');
+
+  if (rbBox && selectedIdx >= 0) {
+    const effectKey = rbBox.dataset.effectKey || 'lines';
+    const imgWrap = rbBox.closest('.cell-img-wrapper');
+    const wrapRect = imgWrap.getBoundingClientRect();
+    const boxState = canvasCells[selectedIdx].adj[effectKey].box || { x:10, y:10, w:80, h:80 };
+
+    interaction.active = true;
+    interaction.cellIdx = selectedIdx;
+    interaction.mode = rbHandle ? 'rb_resize' : 'rb_move';
+    interaction.rbEdge = rbHandle ? rbHandle.dataset.rbHandle : '';
+    interaction.rbEffectKey = effectKey;
+    interaction.startMouseX = e.clientX;
+    interaction.startMouseY = e.clientY;
+    interaction.startBoxX = boxState.x;
+    interaction.startBoxY = boxState.y;
+    interaction.startBoxW = boxState.w;
+    interaction.startBoxH = boxState.h;
+    interaction.wrapW = wrapRect.width || 100;
+    interaction.wrapH = wrapRect.height || 100;
+
+    collage.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
+
   const handleEl = e.target.closest('.resize-handle');
   const tagEl    = e.target.closest('.cell-tag');
   const cellEl   = e.target.closest('.cell');
@@ -327,7 +488,6 @@ collage.addEventListener('pointerdown', e => {
   e.preventDefault();
 });
 
-// Pointer move → Apply movement, proportional resizing, or swap dragging
 collage.addEventListener('pointermove', e => {
   if (!interaction.active) return;
   const fw = frame.offsetWidth, fh = frame.offsetHeight;
@@ -335,6 +495,44 @@ collage.addEventListener('pointermove', e => {
   const dy = e.clientY - interaction.startMouseY;
 
   if (Math.abs(dx) > 3 || Math.abs(dy) > 3) interaction.didDrag = true;
+
+  if (interaction.mode === 'rb_move' || interaction.mode === 'rb_resize') {
+    const dxPct = (dx / interaction.wrapW) * 100;
+    const dyPct = (dy / interaction.wrapH) * 100;
+    const cell = canvasCells[interaction.cellIdx];
+    const boxState = cell.adj[interaction.rbEffectKey].box;
+
+    if (interaction.mode === 'rb_move') {
+      boxState.x = clamp(interaction.startBoxX + dxPct, 0, 100 - boxState.w);
+      boxState.y = clamp(interaction.startBoxY + dyPct, 0, 100 - boxState.h);
+    } else if (interaction.mode === 'rb_resize') {
+      const edge = interaction.rbEdge;
+      if (edge === 'se') {
+        boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+        boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+      } else if (edge === 'sw') {
+        const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+        boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+        boxState.w = newW;
+        boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+      } else if (edge === 'ne') {
+        boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+        const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+        boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+        boxState.h = newH;
+      } else if (edge === 'nw') {
+        const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+        const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+        boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+        boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+        boxState.w = newW;
+        boxState.h = newH;
+      }
+    }
+    renderCollage();
+    return;
+  }
+
   if (!interaction.didDrag) return;
 
   const cell = canvasCells[interaction.cellIdx];
@@ -416,7 +614,6 @@ collage.addEventListener('pointermove', e => {
   }
 });
 
-// Pointer up → Finalize drag or select cell
 collage.addEventListener('pointerup', e => {
   if (!interaction.active) return;
   collage.releasePointerCapture(e.pointerId);
@@ -428,14 +625,16 @@ collage.addEventListener('pointerup', e => {
 
   interaction.active = false;
 
+  if (mode === 'rb_move' || mode === 'rb_resize') {
+    return;
+  }
+
   if (mode === 'swap' && wasDragged && target >= 0) {
     const a = idx, b = target;
     const cellA = canvasCells[a], cellB = canvasCells[b];
-    // Swap ONLY image asset & color adjustments (keep frame positions & tag indices untouched)
     const tmpAsset = cellA.assetId, tmpAdj = {...cellA.adj};
     cellA.assetId = cellB.assetId; cellA.adj = {...cellB.adj};
     cellB.assetId = tmpAsset; cellB.adj = tmpAdj;
-    // Restore A position
     cellA.fx = interaction.startFx; cellA.fy = interaction.startFy;
     selectCell(b);
   } else if (mode === 'swap' && wasDragged && target < 0) {
@@ -489,16 +688,47 @@ function bindSliderAndNum(sliderEl, numEl, onChange) {
 /* ---- INSPECTOR ---- */
 function showInspector(idx) {
   const cell = canvasCells[idx];
-  if (!cell) return;
+  if (!cell) { hideInspector(); return; }
   adjPanel.hidden = false;
-  $('#adj-title').textContent = '@IMAGE'+(idx+1);
+
   for (const key of Object.keys(adjSliders)) {
     adjSliders[key].el.value = cell.adj[key];
     adjSliders[key].num.value = cell.adj[key];
   }
+
+  if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
+  if (!cell.adj.noise) cell.adj.noise = defaultAdj().noise;
+
+  // Lines bindings
+  const l = cell.adj.lines;
+  $('#lines-enable').checked = !!l.enabled;
+  $('#lines-mode').value = l.mode || 'full';
+  $('#lines-angle').value = l.angle; $('#lines-angle-num').value = l.angle;
+  $('#lines-spacing').value = l.spacing; $('#lines-spacing-num').value = l.spacing;
+  $('#lines-size').value = l.size; $('#lines-size-num').value = l.size;
+  $('#lines-opacity').value = l.opacity; $('#lines-opacity-num').value = l.opacity;
+  $('#lines-color').value = l.color || '#ffff00';
+  $('#lines-color-hex').textContent = (l.color || '#ffff00').toUpperCase();
+
+  // Noise bindings
+  const nObj = cell.adj.noise;
+  $('#noise-enable').checked = !!nObj.enabled;
+  $('#noise-mode').value = nObj.mode || 'full';
+  $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
 function hideInspector() { adjPanel.hidden = true; }
+
+// Inspector Tabs Switcher
+$$('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.tab-btn').forEach(b => b.classList.remove('active'));
+    $$('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    const target = $('#' + btn.dataset.tab);
+    if (target) target.classList.add('active');
+  });
+});
 
 for (const key of Object.keys(adjSliders)) {
   const { el, num } = adjSliders[key];
@@ -508,6 +738,62 @@ for (const key of Object.keys(adjSliders)) {
     renderCollage();
   });
 }
+
+// Lines Effect Listeners
+$('#lines-enable').addEventListener('change', e => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.enabled = e.target.checked;
+  renderCollage();
+});
+$('#lines-mode').addEventListener('change', e => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.mode = e.target.value;
+  renderCollage();
+});
+bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.angle = val;
+  renderCollage();
+});
+bindSliderAndNum($('#lines-spacing'), $('#lines-spacing-num'), val => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.spacing = val;
+  renderCollage();
+});
+bindSliderAndNum($('#lines-size'), $('#lines-size-num'), val => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.size = val;
+  renderCollage();
+});
+bindSliderAndNum($('#lines-opacity'), $('#lines-opacity-num'), val => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.opacity = val;
+  renderCollage();
+});
+$('#lines-color').addEventListener('input', e => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const hex = e.target.value;
+  canvasCells[selectedIdx].adj.lines.color = hex;
+  $('#lines-color-hex').textContent = hex.toUpperCase();
+  renderCollage();
+});
+
+// Noise Effect Listeners
+$('#noise-enable').addEventListener('change', e => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.noise.enabled = e.target.checked;
+  renderCollage();
+});
+$('#noise-mode').addEventListener('change', e => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.noise.mode = e.target.value;
+  renderCollage();
+});
+bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.noise.amount = val;
+  renderCollage();
+});
 
 $('#btn-reset-adj').addEventListener('click', () => {
   if (selectedIdx < 0) return;
@@ -697,6 +983,73 @@ async function runExportProcess(baseW, mimeType) {
       ctx.fillRect(imgX,imgY,pw,imgH);
       ctx.globalCompositeOperation = 'source-over';
     }
+
+    // High-Res Lines Render
+    if (adj.lines && adj.lines.enabled) {
+      const l = adj.lines;
+      ctx.save();
+      let lX = imgX, lY = imgY, lW = pw, lH = imgH;
+      if (l.mode === 'region' && l.box) {
+        lX = imgX + (l.box.x / 100) * pw;
+        lY = imgY + (l.box.y / 100) * imgH;
+        lW = (l.box.w / 100) * pw;
+        lH = (l.box.h / 100) * imgH;
+      }
+      ctx.beginPath(); ctx.rect(lX, lY, lW, lH); ctx.clip();
+
+      ctx.strokeStyle = l.color || '#ffff00';
+      ctx.lineWidth = Math.max(1, (l.size || 2) * scale);
+      ctx.globalAlpha = (l.opacity !== undefined ? l.opacity : 80) / 100;
+
+      const angleRad = ((l.angle || 0) * Math.PI) / 180;
+      const step = Math.max(2, (l.spacing || 30) * scale);
+      const diag = Math.sqrt(targetW * targetW + targetH * targetH);
+
+      ctx.translate(lX + lW/2, lY + lH/2);
+      ctx.rotate(angleRad);
+
+      for (let offset = -diag; offset < diag; offset += step) {
+        ctx.beginPath();
+        ctx.moveTo(offset, -diag);
+        ctx.lineTo(offset, diag);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // High-Res Noise Render
+    if (adj.noise && adj.noise.enabled && adj.noise.amount > 0) {
+      const nObj = adj.noise;
+      ctx.save();
+      let nX = imgX, nY = imgY, nW = pw, nH = imgH;
+      if (nObj.mode === 'region' && nObj.box) {
+        nX = imgX + (nObj.box.x / 100) * pw;
+        nY = imgY + (nObj.box.y / 100) * imgH;
+        nW = (nObj.box.w / 100) * pw;
+        nH = (nObj.box.h / 100) * imgH;
+      }
+      ctx.beginPath(); ctx.rect(nX, nY, nW, nH); ctx.clip();
+
+      const noiseCanvas = document.createElement('canvas');
+      noiseCanvas.width = 128; noiseCanvas.height = 128;
+      const nCtx = noiseCanvas.getContext('2d');
+      const imgData = nCtx.createImageData(128, 128);
+      const data = imgData.data;
+      const alpha = (nObj.amount / 100) * 180;
+      for (let k = 0; k < data.length; k += 4) {
+        const v = Math.random() * 255;
+        data[k] = v; data[k+1] = v; data[k+2] = v;
+        data[k+3] = Math.random() < 0.5 ? alpha : alpha * 0.4;
+      }
+      nCtx.putImageData(imgData, 0, 0);
+
+      const pattern = ctx.createPattern(noiseCanvas, 'repeat');
+      ctx.fillStyle = pattern;
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillRect(nX, nY, nW, nH);
+      ctx.restore();
+    }
+
     ctx.restore();
 
     // Outer stroke
