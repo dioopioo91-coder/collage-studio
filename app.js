@@ -1018,6 +1018,13 @@ function showInspector(idx) {
   const cell = isSingleEditorMode ? singleCell : canvasCells[idx];
   if (!cell) { hideInspector(); return; }
   adjPanel.hidden = false;
+  adjPanel.removeAttribute('hidden');
+  adjPanel.style.display = '';
+
+  const tagBadge = $('#inspector-tag-badge');
+  if (tagBadge) {
+    tagBadge.textContent = isSingleEditorMode ? 'PHOTO' : `@IMAGE ${idx + 1}`;
+  }
 
   for (const key of Object.keys(adjSliders)) {
     adjSliders[key].el.value = cell.adj[key];
@@ -1051,7 +1058,11 @@ function showInspector(idx) {
   $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
-function hideInspector() { adjPanel.hidden = true; }
+function hideInspector() {
+  adjPanel.hidden = true;
+  adjPanel.setAttribute('hidden', 'true');
+  adjPanel.style.display = 'none';
+}
 
 // Direct Segmented Mode Handler (Exposed globally for onclick)
 window.setEffectMode = function(effectKey, mode) {
@@ -1707,10 +1718,7 @@ const sidebarPanel       = $('.studio-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
 
-/* Move inspector-section to body level so it is always accessible and never trapped */
-if (adjPanel) {
-  document.body.insertBefore(adjPanel, document.querySelector('.mobile-drawer-overlay') || document.body.firstChild);
-}
+
 
 const allDrawers = [sidebarPanel, adjPanel, navbarCenter].filter(Boolean);
 const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);

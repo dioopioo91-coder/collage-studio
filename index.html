@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=30">
+  <link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
@@ -147,12 +147,15 @@
         <section class="sidebar-section inspector-section" id="adjustments-panel" hidden>
           <div class="drawer-handle"></div>
           <div class="section-header border-top">
-            <div class="inspector-tabs">
-              <button class="tab-btn active" data-tab="tab-color" data-i18n="tabColor">Цвет</button>
-              <button class="tab-btn" data-tab="tab-lines" data-i18n="lines">Линии</button>
-              <button class="tab-btn" data-tab="tab-noise" data-i18n="noise">Шум</button>
+            <div class="inspector-header-left">
+              <span class="selected-tag-pill" id="inspector-tag-badge">@IMAGE 1</span>
+              <div class="inspector-tabs">
+                <button class="tab-btn active" data-tab="tab-color" data-i18n="tabColor">Цвет</button>
+                <button class="tab-btn" data-tab="tab-lines" data-i18n="lines">Линии</button>
+                <button class="tab-btn" data-tab="tab-noise" data-i18n="noise">Шум</button>
+              </div>
             </div>
-            <button class="icon-btn" id="btn-deselect">×</button>
+            <button class="icon-btn" id="btn-deselect" title="Закрыть">×</button>
           </div>
           <div class="inspector-controls">
             <!-- TAB 1: COLOR -->
@@ -318,6 +321,6 @@
   <!-- Global file input: visually hidden but accessible to <label for> clicks -->
   <input type="file" id="global-file-input" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
 
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
