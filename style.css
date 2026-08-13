@@ -70,7 +70,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .drawer-handle:active{background:var(--accent)}
 
   /* ========== SHARED DRAWER STYLES ========== */
-  .figma-sidebar,.inspector-section,.navbar-center{
+  .studio-sidebar,.inspector-section,.navbar-center{
     position:fixed !important;bottom:56px;bottom:calc(56px + env(safe-area-inset-bottom));
     left:0;right:0;width:100%;max-height:50vh;height:auto;
     background:var(--bg-sidebar);z-index:950;
@@ -81,7 +81,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
     overflow-y:auto;-webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;touch-action:pan-y
   }
-  .figma-sidebar.mobile-open,.inspector-section.mobile-open,.navbar-center.mobile-open{
+  .studio-sidebar.mobile-open,.inspector-section.mobile-open,.navbar-center.mobile-open{
     transform:translateY(0)
   }
 
@@ -104,7 +104,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .prop-row-layout .tool-label{font-size:11px !important;width:65px !important;flex-shrink:0 !important;margin:0 !important;display:inline-block !important}
   .prop-row-layout .tool-toggle-label{display:flex !items:center;gap:4px;width:65px;flex-shrink:0}
   .prop-row-layout .slider-val-box{display:flex !important;align-items:center !important;gap:6px !important;flex:1 !important;min-width:0 !important}
-  .prop-row-layout .figma-slider{flex:1 !important;width:100% !important;min-width:0 !important}
+  .prop-row-layout .app-slider{flex:1 !important;width:100% !important;min-width:0 !important}
   .stroke-row{display:flex;align-items:center;gap:4px}
 
   /* ZOOM CONTROLS: Hidden on mobile — use pinch-to-zoom */
@@ -137,9 +137,9 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .mobile-tab-btn .count-pill{position:absolute;top:2px;right:calc(50% - 20px);font-size:8px;padding:0 4px;min-width:14px;height:14px;line-height:14px;text-align:center;border-radius:7px;background:var(--accent);color:#0f0f12;font-weight:800}
 
   /* ========== TOUCH TARGET ENHANCEMENT ========== */
-  .figma-slider{height:20px}
-  .figma-slider::-webkit-slider-thumb{width:28px;height:28px}
-  .figma-slider::-moz-range-thumb{width:28px;height:28px}
+  .app-slider{height:20px}
+  .app-slider::-webkit-slider-thumb{width:28px;height:28px}
+  .app-slider::-moz-range-thumb{width:28px;height:28px}
   .val-num-input{width:56px;height:38px;font-size:14px;border-radius:6px}
   .btn{min-height:44px;padding:10px 18px;font-size:13px;border-radius:8px}
   .btn-upload{padding:12px;font-size:13px}
@@ -181,14 +181,14 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .prop-actions .btn{flex:1 !important;width:50% !important;min-height:40px !important;font-size:12px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important}
 
   /* ASSETS DRAWER MOBILE FULL WIDTH */
-  .figma-sidebar{width:100% !important;left:0 !important;right:0 !important;max-width:100% !important}
+  .studio-sidebar{width:100% !important;left:0 !important;right:0 !important;max-width:100% !important}
   .library-section{width:100% !important}
   .upload-dropzone{width:100% !important;padding:10px 14px}
   .btn-upload{display:flex !important;align-items:center !important;justify-content:center !important;width:100% !important;min-height:44px !important;cursor:pointer !important;text-align:center !important}
   .empty-canvas{cursor:pointer;pointer-events:auto}
 
   /* EXPORT MODAL mobile */
-  .figma-modal{width:calc(100% - 24px);margin:12px;border-radius:16px}
+  .export-modal-window{width:calc(100% - 24px);margin:12px;border-radius:16px}
   .modal-overlay{align-items:center;justify-content:center}
 
   /* Hide desktop zoom controls bar from canvas on mobile (it's a drawer now) */
@@ -197,14 +197,14 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 
 .navbar-center select{background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:5px;padding:3px 20px 3px 8px;font-size:12px;font-weight:600;font-family:var(--font-sans);outline:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
 /* THICK FLEXIBLE SLIDERS */
-.figma-slider{flex:1;width:100%;min-width:60px;height:12px;appearance:none;-webkit-appearance:none;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);outline:none;cursor:pointer;padding:0;margin:0;transition:border-color .15s}
-.navbar .figma-slider{width:75px;flex:none}
-.figma-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#ffffff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s,background .15s}
-.figma-slider::-webkit-slider-thumb:hover,.figma-slider::-webkit-slider-thumb:active{transform:scale(1.25);background:var(--accent-light)}
+.app-slider{flex:1;width:100%;min-width:60px;height:12px;appearance:none;-webkit-appearance:none;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);outline:none;cursor:pointer;padding:0;margin:0;transition:border-color .15s}
+.navbar .app-slider{width:75px;flex:none}
+.app-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#ffffff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s,background .15s}
+.app-slider::-webkit-slider-thumb:hover,.app-slider::-webkit-slider-thumb:active{transform:scale(1.25);background:var(--accent-light)}
 
-.figma-slider.slider-red::-webkit-slider-thumb{border-color:var(--red)}
-.figma-slider.slider-green::-webkit-slider-thumb{border-color:var(--green)}
-.figma-slider.slider-blue::-webkit-slider-thumb{border-color:var(--blue)}
+.app-slider.slider-red::-webkit-slider-thumb{border-color:var(--red)}
+.app-slider.slider-green::-webkit-slider-thumb{border-color:var(--green)}
+.app-slider.slider-blue::-webkit-slider-thumb{border-color:var(--blue)}
 
 /* EDITABLE NUMBER INPUTS */
 .val-num-input{width:46px;height:24px;background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:4px;font-family:var(--font-mono);font-size:11px;font-weight:700;text-align:center;outline:none;padding:0 2px;transition:border-color .15s,background .15s}
@@ -287,7 +287,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .cell-btn:hover{background:var(--accent)}.cell-btn.remove:hover{background:var(--red)}
 
 /* SIDEBAR */
-.figma-sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.studio-sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
 .sidebar-section{display:flex;flex-direction:column}.library-section{flex:1;overflow:hidden}
 .section-header{height:40px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);flex-shrink:0}
 .section-header.border-top{border-top:1px solid var(--border)}
@@ -354,7 +354,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 /* EXPORT DROPDOWN POPOVER (Top-Right Corner) */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(2px);display:flex;justify-content:flex-end;align-items:flex-start;z-index:100}
 .modal-overlay[hidden]{display:none}
-.figma-modal{width:360px;background:var(--bg-sidebar);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-top:58px;margin-right:16px;box-shadow:0 16px 40px rgba(0,0,0,.8),0 0 0 1px rgba(254,240,138,.15);animation:popoverFadeIn .15s ease-out}
+.export-modal-window{width:360px;background:var(--bg-sidebar);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-top:58px;margin-right:16px;box-shadow:0 16px 40px rgba(0,0,0,.8),0 0 0 1px rgba(254,240,138,.15);animation:popoverFadeIn .15s ease-out}
 @keyframes popoverFadeIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -377,9 +377,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .progress-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#fde047,var(--accent));border-radius:3px;transition:width .2s}
 .modal-status{font-size:11px;color:var(--text-sec);margin-bottom:14px;font-family:var(--font-mono);text-align:center}
 
-/* ============================================================
-   FULLSCREEN PHOTO EDITOR OVERLAY
-   ============================================================ */
+/* FULLSCREEN PHOTO EDITOR OVERLAY */
 .editor-mode-overlay {
   position: fixed;
   inset: 0;
@@ -533,9 +531,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
 }
 
 
-/* ============================================================
-   FLOATING CANVAS MODE SWITCHER (Top Center)
-   ============================================================ */
+/* FLOATING CANVAS MODE SWITCHER (Top Center) */
 .canvas-mode-switcher {
   display: none; /* Hidden on desktop by default */
 }
@@ -576,9 +572,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
   color: #0f0f12 !important;
 }
 
-/* ============================================================
-   CELL IMAGE CONTAINER (Strict proportion crop & sync)
-   ============================================================ */
+/* CELL IMAGE CONTAINER (Strict proportion crop & sync) */
 .cell-img-container {
   position: absolute;
   overflow: hidden;
@@ -599,9 +593,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
   z-index: 5 !important;
 }
 
-/* ============================================================
-   SINGLE PHOTO EDITOR UPLOAD BUTTON
-   ============================================================ */
+/* SINGLE PHOTO EDITOR UPLOAD BUTTON */
 .editor-upload-btn {
   position: absolute;
   z-index: 100;
@@ -629,17 +621,13 @@ body.in-editor-mode .inspector-section #btn-deselect {
   display: none !important;
 }
 
-/* ============================================================
-   PIXELATED LINES (CRISP RENDER ON MOBILE ZOOM)
-   ============================================================ */
+/* PIXELATED LINES (CRISP RENDER ON MOBILE ZOOM) */
 .cell-lines-overlay {
   image-rendering: auto !important;
   pointer-events: none;
 }
 
-/* ============================================================
-   MOBILE TELEGRAM BUTTON STYLES
-   ============================================================ */
+/* MOBILE TELEGRAM BUTTON STYLES */
 @media (max-width: 768px) {
   .btn-tg {
     display: inline-flex !important;

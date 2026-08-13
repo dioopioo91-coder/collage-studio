@@ -1,9 +1,4 @@
-/* ============================================================
-   Collage Studio — Application Logic
-   PROPORTIONAL CORNER RESIZING, ZERO-VOID FRAMES, THICK SLIDERS,
-   LEGO LAYOUT, LINES & NOISE EFFECTS WITH REGION SELECTION,
-   CANVAS ZOOM & PAN NAVIGATION, BILINGUAL RU/EN
-   ============================================================ */
+/* Collage Studio — Application Logic */
 'use strict';
 
 const $ = (s, p) => (p || document).querySelector(s);
@@ -76,7 +71,7 @@ function dbGetAll() {
   });
 }
 
-/* ---- STATE ---- */
+/* STATE  */
 let library       = [];  // {id, blob, thumbUrl, natW, natH}
 let canvasCells   = [];  // {assetId, adj, fx, fy, fw, fh} — fractional 0..1
 let selectedIdx   = -1;
@@ -111,7 +106,7 @@ const defaultAdj = () => ({
   }
 });
 
-/* ---- COLOR & EFFECT HELPERS ---- */
+/* COLOR & EFFECT HELPERS  */
 function getContrastColor(hex) {
   const r = parseInt(hex.slice(1,3), 16);
   const g = parseInt(hex.slice(3,5), 16);
@@ -189,7 +184,7 @@ function drawLinesOnCanvas(canvas, linesObj, width, height) {
   ctx.restore();
 }
 
-/* ---- DOM ---- */
+/* DOM  */
 const viewport    = $('#canvas-viewport');
 const frame       = $('#collage-wrapper');
 const collage     = $('#collage');
@@ -234,7 +229,7 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- SMART JUSTIFIED & ADAPTIVE BENTO LAYOUT ENGINE ---- */
+/* SMART JUSTIFIED & ADAPTIVE BENTO LAYOUT ENGINE  */
 function redistributeLayout() {
   const n = canvasCells.length;
   if (n === 0) return;
@@ -365,7 +360,7 @@ function redistributeLayout() {
   }
 }
 
-/* ---- CANVAS FRAME SIZING ---- */
+/* CANVAS FRAME SIZING  */
 function updateFrameSize() {
   const vp = viewport.getBoundingClientRect();
   const isMobile = window.innerWidth <= 768;
@@ -410,7 +405,7 @@ function updateFrameSize() {
   }
 }
 
-/* ---- SVG FILTERS ---- */
+/* SVG FILTERS  */
 function buildSVGFilter(cell, idx) {
   const adj = cell.adj;
   const filterId = 'imgf-' + idx;
@@ -428,7 +423,7 @@ function buildSVGFilter(cell, idx) {
   return `url(#${filterId})`;
 }
 
-/* ---- RENDER COLLAGE ---- */
+/* RENDER COLLAGE  */
 function renderCollage() {
   const n = canvasCells.length;
   emptyState.style.display = n === 0 ? 'flex' : 'none';
@@ -640,7 +635,7 @@ function renderCollage() {
   }
 }
 
-/* ---- INTERACTION & PANNING SYSTEM ---- */
+/* INTERACTION & PANNING SYSTEM  */
 let panToolActive = false;
 let isPanningCanvas = false;
 let panStartX = 0, panStartY = 0;
@@ -965,7 +960,7 @@ collage.addEventListener('pointerup', e => {
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
-/* ---- CELL OPERATIONS ---- */
+/* CELL OPERATIONS  */
 function removeCell(idx) {
   canvasCells.splice(idx, 1);
   if (selectedIdx === idx) { selectedIdx = -1; hideInspector(); }
@@ -1007,7 +1002,7 @@ function syncSegmentedBtns(containerId, activeMode) {
   });
 }
 
-/* ---- INSPECTOR ---- */
+/* INSPECTOR  */
 function showInspector(idx) {
   const cell = isSingleEditorMode ? singleCell : canvasCells[idx];
   if (!cell) { hideInspector(); return; }
@@ -1190,7 +1185,7 @@ $('#btn-reset-adj').addEventListener('click', () => {
 $('#btn-remove-cell').addEventListener('click', () => { if (selectedIdx >= 0) removeCell(selectedIdx); });
 $('#btn-deselect').addEventListener('click', () => { selectedIdx=-1; hideInspector(); renderCollage(); });
 
-/* ---- LIBRARY ---- */
+/* LIBRARY  */
 function renderLibrary() {
   libCount.textContent = library.length;
   const mobCount = $('#mobile-lib-count');
@@ -1231,7 +1226,7 @@ async function removeFromLibrary(id) {
   renderCollage();
 }
 
-/* ---- FILE UPLOAD ---- */
+/* FILE UPLOAD  */
 async function handleFiles(files) {
   if (!files || files.length === 0) return;
   const newAssetIds = [];
@@ -1261,7 +1256,7 @@ if (globalFileInput) {
   });
 }
 
-/* ---- DRAG & DROP FILES ---- */
+/* DRAG & DROP FILES  */
 viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
 viewport.addEventListener('dragleave', () => frame.classList.remove('drag-over'));
 viewport.addEventListener('drop', e => {
@@ -1272,7 +1267,7 @@ viewport.addEventListener('drop', e => {
   }
 });
 
-/* ---- TOOLBAR LISTENERS & TOGGLES ---- */
+/* TOOLBAR LISTENERS & TOGGLES  */
 $('#tag-enable').addEventListener('change', e => {
   tagEnabled = e.target.checked;
   redistributeLayout();
@@ -1327,7 +1322,7 @@ $('#btn-clear-lib').addEventListener('click', async () => {
   library=[]; await dbClear(); renderLibrary(); renderCollage();
 });
 
-/* ---- EXPORT MODAL & RENDERING ---- */
+/* EXPORT MODAL & RENDERING  */
 const exportFormStep     = $('#export-form-step');
 const exportProgressStep = $('#export-progress-step');
 
@@ -1551,12 +1546,10 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-/* ---- WINDOW RESIZE ---- */
+/* WINDOW RESIZE  */
 window.addEventListener('resize', () => { updateFrameSize(); renderCollage(); });
 
-/* ============================================================
-   CANVAS ZOOM & PAN SYSTEM
-   ============================================================ */
+/* CANVAS ZOOM & PAN SYSTEM */
 let zoomScale = 1.0;
 let zoomPanX = 0;
 let zoomPanY = 0;
@@ -1651,7 +1644,7 @@ let touchStartPanX = 0, touchStartPanY = 0;
 let touchMidX = 0, touchMidY = 0;
 
 viewport.addEventListener('touchstart', e => {
-  if (e.target.closest('.zoom-controls') || e.target.closest('.mobile-bottom-bar') || e.target.closest('.figma-sidebar') || e.target.closest('.inspector-section')) return;
+  if (e.target.closest('.zoom-controls') || e.target.closest('.mobile-bottom-bar') || e.target.closest('.studio-sidebar') || e.target.closest('.inspector-section')) return;
 
   if (e.touches.length === 2) {
     isPanningCanvas = true;
@@ -1693,22 +1686,21 @@ viewport.addEventListener('touchend', e => {
   }
 });
 
-/* ---- MOBILE BOTTOM DRAWER CONTROLS ---- */
+/* MOBILE BOTTOM DRAWER CONTROLS  */
 const btnMobileAssets    = $('#btn-mobile-assets');
 const btnMobileLayout    = $('#btn-mobile-layout');
 const btnMobileInspector = $('#btn-mobile-inspector');
 const mobileOverlay      = $('#mobile-overlay');
-const figmaSidebar       = $('.figma-sidebar');
+const sidebarPanel       = $('.studio-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
 
-/* On mobile, move inspector-section out of figma-sidebar to body level
-   so Assets drawer doesn't bleed inspector buttons (Reset/Delete) */
-if (window.innerWidth <= 768 && adjPanel && figmaSidebar) {
+/* Move inspector-section to body level on mobile for drawer separation */
+if (window.innerWidth <= 768 && adjPanel && sidebarPanel) {
   document.body.insertBefore(adjPanel, document.querySelector('.mobile-drawer-overlay'));
 }
 
-const allDrawers = [figmaSidebar, adjPanel, navbarCenter].filter(Boolean);
+const allDrawers = [sidebarPanel, adjPanel, navbarCenter].filter(Boolean);
 const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);
 
 function closeMobileDrawers() {
@@ -1727,7 +1719,7 @@ function openMobileDrawer(drawer, tab) {
   }
 }
 
-btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
+btnMobileAssets?.addEventListener('click', () => openMobileDrawer(sidebarPanel, btnMobileAssets));
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
 btnMobileInspector?.addEventListener('click', () => {
   if (selectedIdx < 0 || selectedIdx >= canvasCells.length) {
@@ -1802,15 +1794,13 @@ viewport.addEventListener('touchend', e => {
   }
 });
 
-/* ---- MOBILE EXPORT BUTTON ---- */
+/* MOBILE EXPORT BUTTON  */
 const btnExportMobile = $('#btn-export-mobile');
 btnExportMobile?.addEventListener('click', () => {
   document.getElementById('export-modal')?.removeAttribute('hidden');
 });
 
-/* ============================================================
-   INTERNATIONALIZATION (i18n) SYSTEM — RU / EN
-   ============================================================ */
+/* INTERNATIONALIZATION (i18n) SYSTEM — RU / EN */
 const i18n = {
   ru: {
     ratio: "ПРОПОРЦИИ",
@@ -1927,7 +1917,7 @@ $$('.lang-btn').forEach(btn => {
   });
 });
 
-/* ---- INIT ---- */
+/* INIT  */
 (async function init() {
   try {
     await openDB();
@@ -1954,9 +1944,7 @@ $$('.lang-btn').forEach(btn => {
 
 
 
-/* ============================================================
-   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style + Single Edit + Session Sync)
-   ============================================================ */
+/* FULLSCREEN PHOTO EDITOR LOGIC  */
 let editorScale = 1.0;
 let editorPanX = 0;
 let editorPanY = 0;
@@ -2289,24 +2277,7 @@ async function exportSingleImage(cell) {
   filter.remove();
 }
 
-// Intercept slider changes to live-update editor preview
-const _origShowInspector = showInspector;
-showInspector = function(idx) {
-  _origShowInspector(idx);
-  if (editorOverlay && !editorOverlay.hasAttribute('hidden')) {
-    renderEditorImage();
-  }
-};
 
-document.querySelectorAll('.inspector-section input').forEach(input => {
-  const handler = () => {
-    if ((isSingleEditorMode || selectedIdx >= 0) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
-      renderEditorImage();
-    }
-  };
-  input.addEventListener('input', handler);
-  input.addEventListener('change', handler);
-});
 
 /* ---- Editor Zoom & Pan (PointerEvents multi-touch) ---- */
 let isPanningEditor = false;

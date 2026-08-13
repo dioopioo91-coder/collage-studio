@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
@@ -52,23 +52,23 @@
         <div class="tool-divider"></div>
         <div class="tool-item prop-row-layout">
           <span class="tool-label" data-i18n="gap">ОТСТУП</span>
-          <div class="slider-val-box"><input type="range" id="collage-gap" min="0" max="40" value="10" class="figma-slider"><input type="number" id="gap-num" min="0" max="40" value="10" class="val-num-input"></div>
+          <div class="slider-val-box"><input type="range" id="collage-gap" min="0" max="40" value="10" class="app-slider"><input type="number" id="gap-num" min="0" max="40" value="10" class="val-num-input"></div>
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item prop-row-layout">
           <span class="tool-label" data-i18n="radius">СКРУГЛЕНИЕ</span>
-          <div class="slider-val-box"><input type="range" id="border-radius" min="0" max="36" value="10" class="figma-slider"><input type="number" id="radius-num" min="0" max="36" value="10" class="val-num-input"></div>
+          <div class="slider-val-box"><input type="range" id="border-radius" min="0" max="36" value="10" class="app-slider"><input type="number" id="radius-num" min="0" max="36" value="10" class="val-num-input"></div>
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item prop-row-layout">
           <label class="tool-toggle-label"><input type="checkbox" id="tag-enable" checked> <span class="tool-label" data-i18n="tag">ТЕГ</span></label>
-          <div class="slider-val-box"><input type="range" id="tag-size" min="12" max="32" value="18" class="figma-slider"><input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input"></div>
+          <div class="slider-val-box"><input type="range" id="tag-size" min="12" max="32" value="18" class="app-slider"><input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input"></div>
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item prop-row-layout">
           <label class="tool-toggle-label"><input type="checkbox" id="stroke-enable" checked> <span class="tool-label" data-i18n="stroke">РАМКА</span></label>
           <div class="stroke-row"><input type="color" id="frame-color" value="#ffffff" class="color-picker"><span class="tool-val" id="frame-color-val">#FFF</span></div>
-          <div class="slider-val-box"><input type="range" id="frame-stroke" min="1" max="8" value="3" class="figma-slider"><input type="number" id="frame-stroke-num" min="1" max="8" value="3" class="val-num-input"></div>
+          <div class="slider-val-box"><input type="range" id="frame-stroke" min="1" max="8" value="3" class="app-slider"><input type="number" id="frame-stroke-num" min="1" max="8" value="3" class="val-num-input"></div>
         </div>
       </div>
       <div class="navbar-right">
@@ -125,7 +125,7 @@
         </div>
       </main>
 
-      <aside class="figma-sidebar">
+      <aside class="studio-sidebar">
         <div class="drawer-handle"></div>
         <section class="sidebar-section library-section">
           <div class="section-header">
@@ -158,13 +158,13 @@
             <!-- TAB 1: COLOR -->
             <div class="tab-content active" id="tab-color">
               <div class="prop-group">
-                <div class="prop-row"><span class="prop-label" data-i18n="brightness">Яркость</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label" data-i18n="contrast">Контраст</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="figma-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label" data-i18n="brightness">Яркость</span><div class="slider-val-box"><input type="range" id="adj-brightness" min="0" max="200" value="100" class="app-slider"><input type="number" id="adj-brightness-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label" data-i18n="contrast">Контраст</span><div class="slider-val-box"><input type="range" id="adj-contrast" min="0" max="200" value="100" class="app-slider"><input type="number" id="adj-contrast-num" min="0" max="200" value="100" class="val-num-input"></div></div>
               </div>
               <div class="prop-group">
-                <div class="prop-row"><span class="prop-label color-r" data-i18n="red">Красный</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="figma-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label color-g" data-i18n="green">Зелёный</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="figma-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
-                <div class="prop-row"><span class="prop-label color-b" data-i18n="blue">Синий</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="figma-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-r" data-i18n="red">Красный</span><div class="slider-val-box"><input type="range" id="adj-r" min="0" max="200" value="100" class="app-slider slider-red"><input type="number" id="adj-r-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-g" data-i18n="green">Зелёный</span><div class="slider-val-box"><input type="range" id="adj-g" min="0" max="200" value="100" class="app-slider slider-green"><input type="number" id="adj-g-num" min="0" max="200" value="100" class="val-num-input"></div></div>
+                <div class="prop-row"><span class="prop-label color-b" data-i18n="blue">Синий</span><div class="slider-val-box"><input type="range" id="adj-b" min="0" max="200" value="100" class="app-slider slider-blue"><input type="number" id="adj-b-num" min="0" max="200" value="100" class="val-num-input"></div></div>
               </div>
             </div>
 
@@ -179,10 +179,10 @@
                   </div>
                 </div>
                 <div class="effect-body" id="lines-body">
-                  <div class="prop-row"><span class="prop-label" data-i18n="angle">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="figma-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label" data-i18n="spacing">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="figma-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label" data-i18n="size">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="figma-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
-                  <div class="prop-row"><span class="prop-label" data-i18n="opacity">Прозр.</span><div class="slider-val-box"><input type="range" id="lines-opacity" min="0" max="100" value="80" class="figma-slider"><input type="number" id="lines-opacity-num" min="0" max="100" value="80" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="angle">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="app-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="spacing">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="app-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="size">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="app-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="opacity">Прозр.</span><div class="slider-val-box"><input type="range" id="lines-opacity" min="0" max="100" value="80" class="app-slider"><input type="number" id="lines-opacity-num" min="0" max="100" value="80" class="val-num-input"></div></div>
                   <div class="prop-row"><span class="prop-label" data-i18n="color">Цвет</span><div class="color-val-box"><input type="color" id="lines-color" value="#ffff00" class="color-picker-input"><span id="lines-color-hex" class="hex-val">#FFFF00</span></div></div>
                 </div>
               </div>
@@ -199,7 +199,7 @@
                   </div>
                 </div>
                 <div class="effect-body" id="noise-body">
-                  <div class="prop-row"><span class="prop-label" data-i18n="level">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="figma-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
+                  <div class="prop-row"><span class="prop-label" data-i18n="level">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="app-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
                 </div>
               </div>
             </div>
@@ -216,7 +216,7 @@
 
   <!-- EXPORT OPTIONS MODAL -->
   <div class="modal-overlay" id="export-modal" hidden>
-    <div class="figma-modal">
+    <div class="export-modal-window">
       <div class="modal-header">
         <h2 data-i18n="exportTitle">Экспорт коллажа</h2>
         <button class="icon-btn" id="btn-modal-x">×</button>
@@ -252,7 +252,7 @@
     </div>
   </div>
 
-  <!-- Fullscreen Photo Editor Overlay (Pixlr / Picsart style) -->
+  <!-- Fullscreen Photo Editor Overlay -->
   <div class="editor-mode-overlay" id="editor-mode-overlay" hidden>
     <header class="editor-header">
       <button class="btn-editor-back" id="btn-editor-close" title="Закрыть редактор">
@@ -307,6 +307,6 @@
   <!-- Global file input: visually hidden but accessible to <label for> clicks -->
   <input type="file" id="global-file-input" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
 
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
