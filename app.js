@@ -1397,36 +1397,64 @@ viewport.addEventListener('touchend', e => {
 });
 
 /* ---- MOBILE BOTTOM DRAWER CONTROLS ---- */
-const btnMobileAssets = $('#btn-mobile-assets');
+const btnMobileAssets    = $('#btn-mobile-assets');
+const btnMobileLayout    = $('#btn-mobile-layout');
 const btnMobileInspector = $('#btn-mobile-inspector');
-const mobileOverlay = $('#mobile-overlay');
-const figmaSidebar = $('.figma-sidebar');
+const btnMobileZoom      = $('#btn-mobile-zoom');
+const mobileOverlay      = $('#mobile-overlay');
+const figmaSidebar       = $('.figma-sidebar');
+const navbarCenter       = $('.navbar-center');
+const zoomControls       = $('.zoom-controls');
 
 function closeMobileDrawers() {
   figmaSidebar?.classList.remove('mobile-open');
   adjPanel?.classList.remove('mobile-open');
+  navbarCenter?.classList.remove('mobile-open');
+  zoomControls?.classList.remove('mobile-open');
   mobileOverlay?.classList.remove('active');
   btnMobileAssets?.classList.remove('active');
+  btnMobileLayout?.classList.remove('active');
   btnMobileInspector?.classList.remove('active');
+  btnMobileZoom?.classList.remove('active');
 }
 
 btnMobileAssets?.addEventListener('click', () => {
-  const isOpening = !figmaSidebar.classList.contains('mobile-open');
+  const isOpening = !figmaSidebar?.classList.contains('mobile-open');
   closeMobileDrawers();
   if (isOpening) {
-    figmaSidebar.classList.add('mobile-open');
-    mobileOverlay.classList.add('active');
-    btnMobileAssets.classList.add('active');
+    figmaSidebar?.classList.add('mobile-open');
+    mobileOverlay?.classList.add('active');
+    btnMobileAssets?.classList.add('active');
+  }
+});
+
+btnMobileLayout?.addEventListener('click', () => {
+  const isOpening = !navbarCenter?.classList.contains('mobile-open');
+  closeMobileDrawers();
+  if (isOpening) {
+    navbarCenter?.classList.add('mobile-open');
+    mobileOverlay?.classList.add('active');
+    btnMobileLayout?.classList.add('active');
   }
 });
 
 btnMobileInspector?.addEventListener('click', () => {
-  const isOpening = !adjPanel.classList.contains('mobile-open');
+  const isOpening = !adjPanel?.classList.contains('mobile-open');
   closeMobileDrawers();
   if (isOpening) {
-    adjPanel.classList.add('mobile-open');
-    mobileOverlay.classList.add('active');
-    btnMobileInspector.classList.add('active');
+    adjPanel?.classList.add('mobile-open');
+    mobileOverlay?.classList.add('active');
+    btnMobileInspector?.classList.add('active');
+  }
+});
+
+btnMobileZoom?.addEventListener('click', () => {
+  const isOpening = !zoomControls?.classList.contains('mobile-open');
+  closeMobileDrawers();
+  if (isOpening) {
+    zoomControls?.classList.add('mobile-open');
+    mobileOverlay?.classList.add('active');
+    btnMobileZoom?.classList.add('active');
   }
 });
 
