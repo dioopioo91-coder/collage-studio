@@ -1,7 +1,8 @@
 /* ============================================================
    Collage Studio — Application Logic
    PROPORTIONAL CORNER RESIZING, ZERO-VOID FRAMES, THICK SLIDERS,
-   LEGO LAYOUT, LINES & NOISE EFFECTS WITH REGION SELECTION
+   LEGO LAYOUT, LINES & NOISE EFFECTS WITH REGION SELECTION,
+   CANVAS ZOOM & PAN NAVIGATION, BILINGUAL RU/EN
    ============================================================ */
 'use strict';
 
@@ -28,11 +29,13 @@ function dbClear()    { return new Promise((y,n) => { const t = db.transaction(S
 function dbGetAll()   { return new Promise((y,n) => { const t = db.transaction(STORE,'readonly' ).objectStore(STORE).getAll();   t.onsuccess=()=>y(t.result); t.onerror=()=>n(t.error); }); }
 
 /* ---- STATE ---- */
-let library     = [];  // {id, blob, thumbUrl, natW, natH}
-let canvasCells = [];  // {assetId, adj, fx, fy, fw, fh} — fractional 0..1
-let selectedIdx = -1;
-let frameColor  = '#ffffff';
-let strokeWidth = 3;
+let library       = [];  // {id, blob, thumbUrl, natW, natH}
+let canvasCells   = [];  // {assetId, adj, fx, fy, fw, fh} — fractional 0..1
+let selectedIdx   = -1;
+let frameColor    = '#ffffff';
+let strokeWidth   = 3;
+let tagEnabled    = true;
+let strokeEnabled = true;
 
 const defaultAdj = () => ({
   brightness: 100,
@@ -175,7 +178,7 @@ function redistributeLayout() {
   const fw = frame.offsetWidth || 1000;
   const fh = frame.offsetHeight || 800;
   const ratio = getRatio();
-  const tagH = Math.round(tagSize * 1.6 + 6);
+  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
 
   let cols;
   if (ratio < 0.75) {
@@ -270,7 +273,8 @@ function renderCollage() {
   const fw = frame.offsetWidth;
   const fh = frame.offsetHeight;
   const contrastColor = getContrastColor(frameColor);
-  const tagH = Math.round(tagSize * 1.6 + 6);
+  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
     const cell = canvasCells[i];
@@ -303,19 +307,21 @@ function renderCollage() {
     // Inner Cell frame
     const inner = document.createElement('div');
     inner.className = 'cell-inner';
-    inner.style.border = strokeWidth + 'px solid ' + frameColor;
+    inner.style.border = activeStrokeWidth > 0 ? (activeStrokeWidth + 'px solid ' + frameColor) : 'none';
     inner.style.borderRadius = radius + 'px';
 
     // Tag (Header Bar)
-    const tag = document.createElement('div');
-    tag.className = 'cell-tag';
-    tag.textContent = '@IMAGE' + (i + 1);
-    tag.style.fontSize = tagSize + 'px';
-    tag.style.height = tagH + 'px';
-    tag.style.lineHeight = tagH + 'px';
-    tag.style.background = frameColor;
-    tag.style.color = contrastColor;
-    inner.appendChild(tag);
+    if (tagEnabled) {
+      const tag = document.createElement('div');
+      tag.className = 'cell-tag';
+      tag.textContent = '@IMAGE' + (i + 1);
+      tag.style.fontSize = tagSize + 'px';
+      tag.style.height = tagH + 'px';
+      tag.style.lineHeight = tagH + 'px';
+      tag.style.background = frameColor;
+      tag.style.color = contrastColor;
+      inner.appendChild(tag);
+    }
 
     // Image & Overlay Wrapper
     const imgWrap = document.createElement('div');
@@ -377,8 +383,10 @@ function renderCollage() {
 
     // Region Selection Box
     if (i === selectedIdx) {
-      const activeEffectKey = (cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region') ? 'lines' :
-                              (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region') ? 'noise' : null;
+      const isLinesRegion = (cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region');
+      const isNoiseRegion = (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region');
+
+      const activeEffectKey = isLinesRegion ? 'lines' : (isNoiseRegion ? 'noise' : null);
       if (activeEffectKey) {
         const box = cell.adj[activeEffectKey].box || { x:10, y:10, w:80, h:80 };
         const rBox = document.createElement('div');
@@ -388,6 +396,11 @@ function renderCollage() {
         rBox.style.width = box.w + '%';
         rBox.style.height = box.h + '%';
         rBox.dataset.effectKey = activeEffectKey;
+
+        const labelBadge = document.createElement('div');
+        labelBadge.className = 'region-box-badge';
+        labelBadge.textContent = isLinesRegion ? 'ОБЛАСТЬ ЛИНИЙ' : 'ОБЛАСТЬ ШУМА';
+        rBox.appendChild(labelBadge);
 
         const corners = ['nw','ne','sw','se'];
         for (const c of corners) {
@@ -428,7 +441,26 @@ function renderCollage() {
   }
 }
 
-/* ---- INTERACTION SYSTEM ---- */
+/* ---- INTERACTION & PANNING SYSTEM ---- */
+let panToolActive = false;
+let isPanningCanvas = false;
+let panStartX = 0, panStartY = 0;
+let panInitialX = 0, panInitialY = 0;
+let isSpacePressed = false;
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.repeat && document.activeElement.tagName !== 'INPUT') {
+    isSpacePressed = true;
+    viewport.style.cursor = 'grab';
+  }
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') {
+    isSpacePressed = false;
+    viewport.style.cursor = panToolActive ? 'grab' : '';
+  }
+});
+
 const interaction = {
   active: false,
   mode: null,       // 'move' | 'swap' | 'resize' | 'rb_move' | 'rb_resize'
@@ -445,6 +477,19 @@ const interaction = {
 
 // Clicking empty canvas deselects and hides inspector panel!
 viewport.addEventListener('pointerdown', e => {
+  // Check for canvas panning trigger
+  if (panToolActive || isSpacePressed || e.button === 1 || e.button === 2) {
+    isPanningCanvas = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panInitialX = zoomPanX;
+    panInitialY = zoomPanY;
+    viewport.style.cursor = 'grabbing';
+    viewport.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
+
   if (e.target === viewport || e.target === frame || e.target === collage || e.target === emptyState) {
     selectedIdx = -1;
     hideInspector();
@@ -452,7 +497,13 @@ viewport.addEventListener('pointerdown', e => {
   }
 });
 
+viewport.addEventListener('contextmenu', e => {
+  if (isPanningCanvas || panToolActive) e.preventDefault();
+});
+
 collage.addEventListener('pointerdown', e => {
+  if (isPanningCanvas || panToolActive || isSpacePressed) return;
+
   const rbHandle = e.target.closest('.region-box-handle');
   const rbBox    = e.target.closest('.region-box');
 
@@ -515,8 +566,19 @@ collage.addEventListener('pointerdown', e => {
   e.preventDefault();
 });
 
+viewport.addEventListener('pointermove', e => {
+  if (isPanningCanvas) {
+    const dx = e.clientX - panStartX;
+    const dy = e.clientY - panStartY;
+    zoomPanX = panInitialX + (dx / zoomScale);
+    zoomPanY = panInitialY + (dy / zoomScale);
+    updateZoomTransform();
+    return;
+  }
+});
+
 collage.addEventListener('pointermove', e => {
-  if (!interaction.active) return;
+  if (isPanningCanvas || !interaction.active) return;
   const fw = frame.offsetWidth, fh = frame.offsetHeight;
   const dx = e.clientX - interaction.startMouseX;
   const dy = e.clientY - interaction.startMouseY;
@@ -527,33 +589,40 @@ collage.addEventListener('pointermove', e => {
     const dxPct = (dx / interaction.wrapW) * 100;
     const dyPct = (dy / interaction.wrapH) * 100;
     const cell = canvasCells[interaction.cellIdx];
-    const boxState = cell.adj[interaction.rbEffectKey].box;
 
-    if (interaction.mode === 'rb_move') {
-      boxState.x = clamp(interaction.startBoxX + dxPct, 0, 100 - boxState.w);
-      boxState.y = clamp(interaction.startBoxY + dyPct, 0, 100 - boxState.h);
-    } else if (interaction.mode === 'rb_resize') {
-      const edge = interaction.rbEdge;
-      if (edge === 'se') {
-        boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
-        boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
-      } else if (edge === 'sw') {
-        const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
-        boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
-        boxState.w = newW;
-        boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
-      } else if (edge === 'ne') {
-        boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
-        const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
-        boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
-        boxState.h = newH;
-      } else if (edge === 'nw') {
-        const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
-        const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
-        boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
-        boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
-        boxState.w = newW;
-        boxState.h = newH;
+    const keysToUpdate = [];
+    if (cell.adj.lines && cell.adj.lines.mode === 'region') keysToUpdate.push('lines');
+    if (cell.adj.noise && cell.adj.noise.mode === 'region') keysToUpdate.push('noise');
+    if (keysToUpdate.length === 0) keysToUpdate.push(interaction.rbEffectKey);
+
+    for (const k of keysToUpdate) {
+      const boxState = cell.adj[k].box || { x:10, y:10, w:80, h:80 };
+      if (interaction.mode === 'rb_move') {
+        boxState.x = clamp(interaction.startBoxX + dxPct, 0, 100 - boxState.w);
+        boxState.y = clamp(interaction.startBoxY + dyPct, 0, 100 - boxState.h);
+      } else if (interaction.mode === 'rb_resize') {
+        const edge = interaction.rbEdge;
+        if (edge === 'se') {
+          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+        } else if (edge === 'sw') {
+          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+          boxState.w = newW;
+          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+        } else if (edge === 'ne') {
+          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+          boxState.h = newH;
+        } else if (edge === 'nw') {
+          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+          boxState.w = newW;
+          boxState.h = newH;
+        }
       }
     }
     renderCollage();
@@ -565,7 +634,7 @@ collage.addEventListener('pointermove', e => {
   const cell = canvasCells[interaction.cellIdx];
   const asset = library.find(a => a.id === cell.assetId);
   const ir = asset ? (asset.natW / asset.natH) : 1;
-  const tagH = Math.round(tagSize * 1.6 + 6);
+  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
   const dfx = dx / fw, dfy = dy / fh;
 
   if (interaction.mode === 'move') {
@@ -641,6 +710,15 @@ collage.addEventListener('pointermove', e => {
   }
 });
 
+viewport.addEventListener('pointerup', e => {
+  if (isPanningCanvas) {
+    isPanningCanvas = false;
+    viewport.releasePointerCapture(e.pointerId);
+    viewport.style.cursor = panToolActive ? 'grab' : '';
+    return;
+  }
+});
+
 collage.addEventListener('pointerup', e => {
   if (!interaction.active) return;
   collage.releasePointerCapture(e.pointerId);
@@ -712,6 +790,12 @@ function bindSliderAndNum(sliderEl, numEl, onChange) {
   });
 }
 
+function syncSegmentedBtns(containerId, activeMode) {
+  $$(`#${containerId} .segment-btn`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === activeMode);
+  });
+}
+
 /* ---- INSPECTOR ---- */
 function showInspector(idx) {
   const cell = canvasCells[idx];
@@ -729,7 +813,7 @@ function showInspector(idx) {
   // Lines bindings
   const l = cell.adj.lines;
   $('#lines-enable').checked = !!l.enabled;
-  $('#lines-mode').value = l.mode || 'full';
+  syncSegmentedBtns('lines-mode-seg', l.mode || 'full');
   $('#lines-angle').value = l.angle; $('#lines-angle-num').value = l.angle;
   $('#lines-spacing').value = l.spacing; $('#lines-spacing-num').value = l.spacing;
   $('#lines-size').value = l.size; $('#lines-size-num').value = l.size;
@@ -740,7 +824,7 @@ function showInspector(idx) {
   // Noise bindings
   const nObj = cell.adj.noise;
   $('#noise-enable').checked = !!nObj.enabled;
-  $('#noise-mode').value = nObj.mode || 'full';
+  syncSegmentedBtns('noise-mode-seg', nObj.mode || 'full');
   $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
@@ -785,12 +869,18 @@ $('#lines-enable').addEventListener('change', e => {
   canvasCells[selectedIdx].adj.lines.enabled = e.target.checked;
   renderCollage();
 });
-$('#lines-mode').addEventListener('change', e => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  autoEnableLines();
-  canvasCells[selectedIdx].adj.lines.mode = e.target.value;
-  renderCollage();
+
+$$('#lines-mode-seg .segment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+    autoEnableLines();
+    const mode = btn.dataset.mode;
+    canvasCells[selectedIdx].adj.lines.mode = mode;
+    syncSegmentedBtns('lines-mode-seg', mode);
+    renderCollage();
+  });
 });
+
 bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
   autoEnableLines();
@@ -830,12 +920,18 @@ $('#noise-enable').addEventListener('change', e => {
   canvasCells[selectedIdx].adj.noise.enabled = e.target.checked;
   renderCollage();
 });
-$('#noise-mode').addEventListener('change', e => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  autoEnableNoise();
-  canvasCells[selectedIdx].adj.noise.mode = e.target.value;
-  renderCollage();
+
+$$('#noise-mode-seg .segment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+    autoEnableNoise();
+    const mode = btn.dataset.mode;
+    canvasCells[selectedIdx].adj.noise.mode = mode;
+    syncSegmentedBtns('noise-mode-seg', mode);
+    renderCollage();
+  });
 });
+
 bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
   autoEnableNoise();
@@ -922,7 +1018,18 @@ viewport.addEventListener('drop', e => {
   }
 });
 
-/* ---- TOOLBAR SLIDERS ---- */
+/* ---- TOOLBAR LISTENERS & TOGGLES ---- */
+$('#tag-enable').addEventListener('change', e => {
+  tagEnabled = e.target.checked;
+  redistributeLayout();
+  renderCollage();
+});
+
+$('#stroke-enable').addEventListener('change', e => {
+  strokeEnabled = e.target.checked;
+  renderCollage();
+});
+
 bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
 bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
 bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
@@ -983,7 +1090,7 @@ async function runExportProcess(baseW, mimeType) {
   const scale = targetW / frame.offsetWidth;
   const radPx = radius * scale;
   const tagPx = tagSize * scale;
-  const strokePx = strokeWidth * scale;
+  const strokePx = strokeEnabled ? (strokeWidth * scale) : 0;
   const contrastColor = getContrastColor(frameColor);
 
   for (let i = 0; i < n; i++) {
@@ -1000,7 +1107,7 @@ async function runExportProcess(baseW, mimeType) {
     const py = cell.fy * targetH;
     const pw = cell.fw * targetW;
 
-    const tagH = Math.round(tagPx*1.6 + 6*scale);
+    const tagH = tagEnabled ? Math.round(tagPx*1.6 + 6*scale) : 0;
     const imgH = pw / ir;
     const ph = tagH + imgH;
 
@@ -1011,12 +1118,14 @@ async function runExportProcess(baseW, mimeType) {
     ctx.clip();
 
     // Tag header
-    ctx.fillStyle = frameColor;
-    ctx.fillRect(px, py, pw, tagH);
-    ctx.fillStyle = contrastColor;
-    ctx.font = `900 ${tagPx}px Inter, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('@IMAGE'+(i+1), px+pw/2, py+tagH/2);
+    if (tagEnabled) {
+      ctx.fillStyle = frameColor;
+      ctx.fillRect(px, py, pw, tagH);
+      ctx.fillStyle = contrastColor;
+      ctx.font = `900 ${tagPx}px Inter, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('@IMAGE'+(i+1), px+pw/2, py+tagH/2);
+    }
 
     // Image
     const imgX = px, imgY = py + tagH;
@@ -1101,8 +1210,10 @@ async function runExportProcess(baseW, mimeType) {
     ctx.restore();
 
     // Outer stroke
-    ctx.strokeStyle = frameColor; ctx.lineWidth = strokePx;
-    ctx.beginPath(); roundRect(ctx, px, py, pw, ph, radPx); ctx.stroke();
+    if (strokeEnabled && strokePx > 0) {
+      ctx.strokeStyle = frameColor; ctx.lineWidth = strokePx;
+      ctx.beginPath(); roundRect(ctx, px, py, pw, ph, radPx); ctx.stroke();
+    }
 
     if (asset.blob instanceof Blob) URL.revokeObjectURL(img.src);
     await sleep(10);
@@ -1197,6 +1308,15 @@ $('#btn-zoom-reset')?.addEventListener('click', () => {
   zoomScale = 1.0; zoomPanX = 0; zoomPanY = 0;
   updateZoomTransform();
 });
+
+const panBtn = $('#btn-pan-tool');
+if (panBtn) {
+  panBtn.addEventListener('click', () => {
+    panToolActive = !panToolActive;
+    panBtn.classList.toggle('active', panToolActive);
+    viewport.style.cursor = panToolActive ? 'grab' : '';
+  });
+}
 
 viewport.addEventListener('dblclick', e => {
   if (e.target === viewport || e.target === frame) {

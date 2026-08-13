@@ -52,13 +52,13 @@
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label" data-i18n="tag">ТЕГ</span>
+          <label class="tool-toggle-label"><input type="checkbox" id="tag-enable" checked> <span class="tool-label" data-i18n="tag">ТЕГ</span></label>
           <input type="range" id="tag-size" min="12" max="32" value="18" class="figma-slider">
           <input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input">
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item">
-          <span class="tool-label" data-i18n="stroke">РАМКА</span>
+          <label class="tool-toggle-label"><input type="checkbox" id="stroke-enable" checked> <span class="tool-label" data-i18n="stroke">РАМКА</span></label>
           <input type="color" id="frame-color" value="#ffffff" class="color-picker">
           <span class="tool-val" id="frame-color-val">#FFF</span>
           <input type="range" id="frame-stroke" min="1" max="8" value="3" class="figma-slider">
@@ -87,8 +87,10 @@
           </div>
         </div>
 
-        <!-- Zoom Controls -->
+        <!-- Zoom & Pan Controls -->
         <div class="zoom-controls">
+          <button class="icon-btn" id="btn-pan-tool" title="Pan Canvas (Hold Space + Drag)">✋</button>
+          <div class="tool-divider"></div>
           <button class="icon-btn" id="btn-zoom-out" title="Zoom Out">−</button>
           <span class="zoom-val" id="zoom-val">100%</span>
           <button class="icon-btn" id="btn-zoom-in" title="Zoom In">+</button>
@@ -143,15 +145,12 @@
               <div class="effect-card">
                 <div class="effect-header">
                   <label class="toggle-label"><input type="checkbox" id="lines-enable"> <span data-i18n="lines">Линии</span></label>
+                  <div class="mode-segmented" id="lines-mode-seg">
+                    <button type="button" class="segment-btn active" data-mode="full" data-i18n="fullPhoto">Всё фото</button>
+                    <button type="button" class="segment-btn" data-mode="region" data-i18n="selectedRegion">Выделенный участок</button>
+                  </div>
                 </div>
                 <div class="effect-body" id="lines-body">
-                  <div class="prop-row">
-                    <span class="prop-label" data-i18n="area">Область</span>
-                    <select id="lines-mode" class="mini-select mode-select">
-                      <option value="full" data-i18n="fullPhoto">Всё фото</option>
-                      <option value="region" data-i18n="selectedRegion">Выделенный участок</option>
-                    </select>
-                  </div>
                   <div class="prop-row"><span class="prop-label" data-i18n="angle">Угол</span><div class="slider-val-box"><input type="range" id="lines-angle" min="0" max="180" value="0" class="figma-slider"><input type="number" id="lines-angle-num" min="0" max="180" value="0" class="val-num-input"></div></div>
                   <div class="prop-row"><span class="prop-label" data-i18n="spacing">Отступ</span><div class="slider-val-box"><input type="range" id="lines-spacing" min="4" max="100" value="30" class="figma-slider"><input type="number" id="lines-spacing-num" min="4" max="100" value="30" class="val-num-input"></div></div>
                   <div class="prop-row"><span class="prop-label" data-i18n="size">Размер</span><div class="slider-val-box"><input type="range" id="lines-size" min="1" max="20" value="2" class="figma-slider"><input type="number" id="lines-size-num" min="1" max="20" value="2" class="val-num-input"></div></div>
@@ -164,15 +163,12 @@
               <div class="effect-card">
                 <div class="effect-header">
                   <label class="toggle-label"><input type="checkbox" id="noise-enable"> <span data-i18n="noise">Шум</span></label>
+                  <div class="mode-segmented" id="noise-mode-seg">
+                    <button type="button" class="segment-btn active" data-mode="full" data-i18n="fullPhoto">Всё фото</button>
+                    <button type="button" class="segment-btn" data-mode="region" data-i18n="selectedRegion">Выделенный участок</button>
+                  </div>
                 </div>
                 <div class="effect-body" id="noise-body">
-                  <div class="prop-row">
-                    <span class="prop-label" data-i18n="area">Область</span>
-                    <select id="noise-mode" class="mini-select mode-select">
-                      <option value="full" data-i18n="fullPhoto">Всё фото</option>
-                      <option value="region" data-i18n="selectedRegion">Выделенный участок</option>
-                    </select>
-                  </div>
                   <div class="prop-row"><span class="prop-label" data-i18n="level">Уровень</span><div class="slider-val-box"><input type="range" id="noise-amount" min="0" max="100" value="30" class="figma-slider"><input type="number" id="noise-amount-num" min="0" max="100" value="30" class="val-num-input"></div></div>
                 </div>
               </div>
