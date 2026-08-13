@@ -80,6 +80,8 @@ function dbGetAll() {
 let library       = [];  // {id, blob, thumbUrl, natW, natH}
 let canvasCells   = [];  // {assetId, adj, fx, fy, fw, fh} — fractional 0..1
 let selectedIdx   = -1;
+let isSingleEditorMode = false;
+let singleCell    = null;
 let frameColor    = '#ffffff';
 let strokeWidth   = 3;
 let tagEnabled    = true;
@@ -903,7 +905,7 @@ function syncSegmentedBtns(containerId, activeMode) {
 
 /* ---- INSPECTOR ---- */
 function showInspector(idx) {
-  const cell = canvasCells[idx];
+  const cell = isSingleEditorMode ? singleCell : canvasCells[idx];
   if (!cell) { hideInspector(); return; }
   adjPanel.hidden = false;
 
@@ -973,87 +975,113 @@ $$('.tab-btn').forEach(btn => {
   });
 });
 
+// Helper to get active cell in editor or collage mode
+function getActiveCell() {
+  return isSingleEditorMode ? singleCell : (selectedIdx >= 0 ? canvasCells[selectedIdx] : null);
+}
+
+function refreshImageEffects() {
+  if (isSingleEditorMode) {
+    renderEditorImage();
+  } else {
+    renderCollage();
+  }
+}
+
 for (const key of Object.keys(adjSliders)) {
   const { el, num } = adjSliders[key];
   bindSliderAndNum(el, num, val => {
-    if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-    canvasCells[selectedIdx].adj[key] = val;
-    renderCollage();
+    const cell = getActiveCell();
+    if (!cell) return;
+    cell.adj[key] = val;
+    refreshImageEffects();
   });
 }
 
 // Auto-enable helpers
 function autoEnableLines() {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  canvasCells[selectedIdx].adj.lines.enabled = true;
+  const cell = getActiveCell();
+  if (!cell) return;
+  cell.adj.lines.enabled = true;
   $('#lines-enable').checked = true;
 }
 
+// Ensure noise auto-enables on input change
 function autoEnableNoise() {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  canvasCells[selectedIdx].adj.noise.enabled = true;
+  const cell = getActiveCell();
+  if (!cell) return;
+  cell.adj.noise.enabled = true;
   $('#noise-enable').checked = true;
 }
 
 // Lines Effect Listeners
 $('#lines-enable').addEventListener('change', e => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  canvasCells[selectedIdx].adj.lines.enabled = e.target.checked;
-  renderCollage();
+  const cell = getActiveCell();
+  if (!cell) return;
+  cell.adj.lines.enabled = e.target.checked;
+  refreshImageEffects();
 });
 
 bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableLines();
-  canvasCells[selectedIdx].adj.lines.angle = val;
-  renderCollage();
+  cell.adj.lines.angle = val;
+  refreshImageEffects();
 });
 bindSliderAndNum($('#lines-spacing'), $('#lines-spacing-num'), val => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableLines();
-  canvasCells[selectedIdx].adj.lines.spacing = val;
-  renderCollage();
+  cell.adj.lines.spacing = val;
+  refreshImageEffects();
 });
 bindSliderAndNum($('#lines-size'), $('#lines-size-num'), val => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableLines();
-  canvasCells[selectedIdx].adj.lines.size = val;
-  renderCollage();
+  cell.adj.lines.size = val;
+  refreshImageEffects();
 });
 bindSliderAndNum($('#lines-opacity'), $('#lines-opacity-num'), val => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableLines();
-  canvasCells[selectedIdx].adj.lines.opacity = val;
-  renderCollage();
+  cell.adj.lines.opacity = val;
+  refreshImageEffects();
 });
 $('#lines-color').addEventListener('input', e => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableLines();
   const hex = e.target.value;
-  canvasCells[selectedIdx].adj.lines.color = hex;
+  cell.adj.lines.color = hex;
   $('#lines-color-hex').textContent = hex.toUpperCase();
-  renderCollage();
+  refreshImageEffects();
 });
 
 // Noise Effect Listeners
 $('#noise-enable').addEventListener('change', e => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  canvasCells[selectedIdx].adj.noise.enabled = e.target.checked;
-  renderCollage();
+  const cell = getActiveCell();
+  if (!cell) return;
+  cell.adj.noise.enabled = e.target.checked;
+  refreshImageEffects();
 });
 
 bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  const cell = getActiveCell();
+  if (!cell) return;
   autoEnableNoise();
-  canvasCells[selectedIdx].adj.noise.amount = val;
-  renderCollage();
+  cell.adj.noise.amount = val;
+  refreshImageEffects();
 });
 
 $('#btn-reset-adj').addEventListener('click', () => {
-  if (selectedIdx < 0) return;
-  canvasCells[selectedIdx].adj = defaultAdj();
-  showInspector(selectedIdx);
-  renderCollage();
+  const cell = getActiveCell();
+  if (!cell) return;
+  cell.adj = defaultAdj();
+  showInspector(isSingleEditorMode ? -1 : selectedIdx);
+  refreshImageEffects();
 });
 $('#btn-remove-cell').addEventListener('click', () => { if (selectedIdx >= 0) removeCell(selectedIdx); });
 $('#btn-deselect').addEventListener('click', () => { selectedIdx=-1; hideInspector(); renderCollage(); });
@@ -1583,8 +1611,7 @@ btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, 
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
 btnMobileInspector?.addEventListener('click', () => {
   if (selectedIdx < 0 || selectedIdx >= canvasCells.length) {
-    btnMobileInspector.style.color = '#ff4466';
-    setTimeout(() => { btnMobileInspector.style.color = ''; }, 600);
+    openFullscreenEditor(-1);
     return;
   }
   openFullscreenEditor(selectedIdx);
@@ -1795,8 +1822,10 @@ $$('.lang-btn').forEach(btn => {
 })();
 
 
+
+
 /* ============================================================
-   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style)
+   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style + Single Edit)
    ============================================================ */
 let editorScale = 1.0;
 let editorPanX = 0;
@@ -1806,6 +1835,8 @@ const editorOverlay = document.getElementById('editor-mode-overlay');
 const editorViewport = document.getElementById('editor-viewport');
 const editorWrapper = document.getElementById('editor-canvas-wrapper');
 const editorImgContainer = document.getElementById('editor-image-container');
+const editorUploadBtn = document.getElementById('editor-upload-btn');
+const editorFileInput = document.getElementById('editor-file-input');
 
 const btnEditorClose = document.getElementById('btn-editor-close');
 const btnEditorSave = document.getElementById('btn-editor-save');
@@ -1815,11 +1846,22 @@ function openFullscreenEditor(idx) {
   document.body.classList.add('in-editor-mode');
   editorOverlay.removeAttribute('hidden');
   
-  // Show adjustments panel (raise it above the overlay)
-  showInspector(idx);
-  if (adjPanel) {
-    adjPanel.removeAttribute('hidden');
-    adjPanel.classList.remove('no-selection');
+  if (idx === -1) {
+    isSingleEditorMode = true;
+    singleCell = null;
+    if (editorUploadBtn) editorUploadBtn.removeAttribute('hidden');
+    if (editorImgContainer) editorImgContainer.innerHTML = '';
+    hideInspector();
+  } else {
+    isSingleEditorMode = false;
+    singleCell = null;
+    if (editorUploadBtn) editorUploadBtn.setAttribute('hidden', 'true');
+    showInspector(idx);
+    if (adjPanel) {
+      adjPanel.removeAttribute('hidden');
+      adjPanel.classList.remove('no-selection');
+    }
+    renderEditorImage();
   }
   
   // Reset zoom & pan in editor
@@ -1827,20 +1869,51 @@ function openFullscreenEditor(idx) {
   editorPanX = 0;
   editorPanY = 0;
   updateEditorTransform();
-  
-  renderEditorImage();
 }
 
-function closeFullscreenEditor() {
+async function closeFullscreenEditor(saveClicked) {
+  if (isSingleEditorMode && saveClicked && singleCell) {
+    // Export single photo in its original quality
+    await exportSingleImage(singleCell);
+  }
+  
   document.body.classList.remove('in-editor-mode');
   editorOverlay.setAttribute('hidden', 'true');
   hideInspector();
   selectedIdx = -1;
+  isSingleEditorMode = false;
+  singleCell = null;
   renderCollage();
 }
 
-btnEditorClose?.addEventListener('click', closeFullscreenEditor);
-btnEditorSave?.addEventListener('click', closeFullscreenEditor);
+btnEditorClose?.addEventListener('click', () => closeFullscreenEditor(false));
+btnEditorSave?.addEventListener('click', () => closeFullscreenEditor(true));
+
+// File picker listener inside the single editor
+editorFileInput?.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  editorFileInput.value = '';
+  if (!file) return;
+
+  const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  const thumbUrl = URL.createObjectURL(file);
+  const dims = await getImageDims(thumbUrl);
+  
+  const asset = { id, blob: file, thumbUrl, natW: dims.w, natH: dims.h };
+  library.push(asset);
+  renderLibrary();
+  try { await dbPut({ id, blob: file }); } catch(err) { console.warn('DB save failed:', err); }
+
+  singleCell = { assetId: id, adj: defaultAdj() };
+  if (editorUploadBtn) editorUploadBtn.setAttribute('hidden', 'true');
+  
+  showInspector(-1);
+  if (adjPanel) {
+    adjPanel.removeAttribute('hidden');
+    adjPanel.classList.remove('no-selection');
+  }
+  renderEditorImage();
+});
 
 function updateEditorTransform() {
   if (editorWrapper) {
@@ -1852,7 +1925,7 @@ function renderEditorImage() {
   if (!editorImgContainer) return;
   editorImgContainer.innerHTML = '';
 
-  const cell = canvasCells[selectedIdx];
+  const cell = isSingleEditorMode ? singleCell : canvasCells[selectedIdx];
   if (!cell) return;
 
   const asset = library.find(a => a.id === cell.assetId);
@@ -1865,7 +1938,8 @@ function renderEditorImage() {
   const ir = natW / natH;
 
   const activeTagSize = Math.max(8, Math.round(tagSize * 0.6));
-  const tagH = tagEnabled ? Math.round(activeTagSize * 1.5 + 4) : 0;
+  // No tag header on single editor mode!
+  const tagH = (tagEnabled && !isSingleEditorMode) ? Math.round(activeTagSize * 1.5 + 4) : 0;
   const contrastColor = getContrastColor(frameColor);
 
   let pw, ph, imgH;
@@ -1883,10 +1957,10 @@ function renderEditorImage() {
   inner.className = 'cell-inner';
   inner.style.width = pw + 'px';
   inner.style.height = ph + 'px';
-  inner.style.borderRadius = radius + 'px';
-  inner.style.border = (strokeEnabled && strokeWidth > 0) ? (strokeWidth + 'px solid ' + frameColor) : 'none';
+  inner.style.borderRadius = isSingleEditorMode ? '0px' : (radius + 'px');
+  inner.style.border = (strokeEnabled && strokeWidth > 0 && !isSingleEditorMode) ? (strokeWidth + 'px solid ' + frameColor) : 'none';
 
-  if (tagEnabled) {
+  if (tagEnabled && !isSingleEditorMode) {
     const tag = document.createElement('div');
     tag.className = 'cell-tag';
     tag.textContent = '@IMAGE' + (selectedIdx + 1);
@@ -1917,7 +1991,7 @@ function renderEditorImage() {
   img.draggable = false;
   img.style.width = '100%';
   img.style.height = '100%';
-  const filterVal = buildSVGFilter(cell, selectedIdx);
+  const filterVal = buildSVGFilter(cell, isSingleEditorMode ? 9999 : selectedIdx);
   if (filterVal) img.style.filter = filterVal;
   imgContainer.appendChild(img);
 
@@ -1994,11 +2068,98 @@ function renderEditorImage() {
   editorImgContainer.appendChild(inner);
 }
 
+// Export single edited photo in high resolution (Original Quality)
+async function exportSingleImage(cell) {
+  const asset = library.find(a => a.id === cell.assetId);
+  if (!asset) return;
+
+  // Create temporary image to obtain clean natural resolution
+  const img = new Image();
+  img.src = asset.thumbUrl;
+  await new Promise(resolve => { img.onload = resolve; });
+
+  const w = img.naturalWidth || asset.natW || img.width;
+  const h = img.naturalHeight || asset.natH || img.height;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  // SVG color adjustments filter string creation
+  const filterId = 'export-single-filter';
+  let filterDef = document.getElementById(filterId);
+  if (filterDef) filterDef.remove();
+
+  const adj = cell.adj;
+  const b=adj.brightness/100, c=adj.contrast/100, rM=adj.r/100, gM=adj.g/100, bM=adj.b/100;
+  const cOff = (1-c)*0.5;
+  const filter = document.createElementNS('http://www.w3.org/2000/svg','filter');
+  filter.id = filterId;
+  filter.innerHTML = `<feColorMatrix type="matrix" values="${(rM*c*b).toFixed(3)} 0 0 0 ${cOff.toFixed(3)} 0 ${(gM*c*b).toFixed(3)} 0 0 ${cOff.toFixed(3)} 0 0 ${(bM*c*b).toFixed(3)} 0 ${cOff.toFixed(3)} 0 0 0 1 0"/>`;
+  document.querySelector('#svg-filters defs').appendChild(filter);
+
+  // Draw filtered image
+  ctx.filter = `url(#${filterId})`;
+  ctx.drawImage(img, 0, 0, w, h);
+  ctx.filter = 'none';
+
+  // Apply Lines overlay
+  if (adj.lines && adj.lines.enabled) {
+    let boxW = w, boxH = h;
+    let offsetX = 0, offsetY = 0;
+    if (adj.lines.mode === 'region' && adj.lines.box) {
+      boxW = Math.round((adj.lines.box.w / 100) * w);
+      boxH = Math.round((adj.lines.box.h / 100) * h);
+      offsetX = Math.round((adj.lines.box.x / 100) * w);
+      offsetY = Math.round((adj.lines.box.y / 100) * h);
+    }
+    const lCanvas = document.createElement('canvas');
+    drawLinesOnCanvas(lCanvas, adj.lines, boxW, boxH);
+    ctx.drawImage(lCanvas, offsetX, offsetY, boxW, boxH);
+  }
+
+  // Apply Noise overlay
+  if (adj.noise && adj.noise.enabled && adj.noise.amount > 0) {
+    let boxW = w, boxH = h;
+    let offsetX = 0, offsetY = 0;
+    if (adj.noise.mode === 'region' && adj.noise.box) {
+      boxW = Math.round((adj.noise.box.w / 100) * w);
+      boxH = Math.round((adj.noise.box.h / 100) * h);
+      offsetX = Math.round((adj.noise.box.x / 100) * w);
+      offsetY = Math.round((adj.noise.box.y / 100) * h);
+    }
+
+    const noiseImg = new Image();
+    noiseImg.src = generateNoiseDataUrl(adj.noise.amount);
+    await new Promise(resolve => {
+      noiseImg.onload = () => resolve();
+      if (noiseImg.complete) resolve();
+    });
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.drawImage(noiseImg, offsetX, offsetY, boxW, boxH);
+    ctx.restore();
+  }
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `single-photo-edited-${Date.now()}.jpg`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  filter.remove();
+}
+
 // Intercept slider updates and redraw editor image
 const oldShowInspector = showInspector;
 showInspector = function(idx) {
   oldShowInspector(idx);
-  if (selectedIdx === idx && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+  if ((idx === -1 || selectedIdx === idx) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
     renderEditorImage();
   }
 };
@@ -2006,12 +2167,12 @@ showInspector = function(idx) {
 // Bind sliders input change events to redraw editor
 document.querySelectorAll('.inspector-section input').forEach(input => {
   input.addEventListener('input', () => {
-    if (selectedIdx >= 0 && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+    if ((isSingleEditorMode || selectedIdx >= 0) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
       renderEditorImage();
     }
   });
   input.addEventListener('change', () => {
-    if (selectedIdx >= 0 && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+    if ((isSingleEditorMode || selectedIdx >= 0) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
       renderEditorImage();
     }
   });
@@ -2031,14 +2192,16 @@ editorViewport?.addEventListener('pointerdown', e => {
   const rbHandle = e.target.closest('.region-box-handle');
   const rbBox    = e.target.closest('.region-box');
 
-  if (rbBox && selectedIdx >= 0 && activePointers.length === 0) {
+  const cell = isSingleEditorMode ? singleCell : (selectedIdx >= 0 ? canvasCells[selectedIdx] : null);
+
+  if (rbBox && cell && activePointers.length === 0) {
     const effectKey = rbBox.dataset.effectKey || 'lines';
     const imgWrap = rbBox.closest('.cell-img-wrapper');
     const wrapRect = imgWrap.getBoundingClientRect();
-    const boxState = canvasCells[selectedIdx].adj[effectKey].box || { x:10, y:10, w:80, h:80 };
+    const boxState = cell.adj[effectKey].box || { x:10, y:10, w:80, h:80 };
 
     interaction.active = true;
-    interaction.cellIdx = selectedIdx;
+    interaction.cellIdx = isSingleEditorMode ? -1 : selectedIdx;
     interaction.mode = rbHandle ? 'rb_resize' : 'rb_move';
     interaction.rbEdge = rbHandle ? rbHandle.dataset.rbHandle : '';
     interaction.rbEffectKey = effectKey;
@@ -2086,12 +2249,13 @@ editorViewport?.addEventListener('pointermove', e => {
   const idx = activePointers.findIndex(p => p.pointerId === e.pointerId);
   if (idx >= 0) activePointers[idx] = e;
 
-  if (interaction.active && selectedIdx >= 0) {
+  const cell = isSingleEditorMode ? singleCell : (selectedIdx >= 0 ? canvasCells[selectedIdx] : null);
+
+  if (interaction.active && cell) {
     const dx = e.clientX - interaction.startMouseX;
     const dy = e.clientY - interaction.startMouseY;
     const dxPct = (dx / (interaction.wrapW * editorScale)) * 100;
     const dyPct = (dy / (interaction.wrapH * editorScale)) * 100;
-    const cell = canvasCells[selectedIdx];
 
     const keysToUpdate = [];
     if (cell.adj.lines && cell.adj.lines.mode === 'region') keysToUpdate.push('lines');
