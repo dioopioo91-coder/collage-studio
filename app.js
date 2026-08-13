@@ -1,3 +1,10 @@
+function isMobileUI() {
+  return window.innerWidth <= 768 || (window.innerHeight <= 550 && window.innerWidth <= 1100);
+}
+function isMobileLandscape() {
+  return isMobileUI() && window.innerWidth > window.innerHeight;
+}
+
 /* Collage Studio — Application Logic */
 'use strict';
 
@@ -360,17 +367,17 @@ function redistributeLayout() {
   }
 }
 
-/* CANVAS FRAME SIZING  */
+/* CANVAS FRAME SIZING */
 function updateFrameSize() {
   const vp = viewport.getBoundingClientRect();
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = isMobileUI();
+  const isLand = isMobileLandscape();
   const ratio = getRatio();
   let w, h;
 
   if (isMobile) {
-    // Generous high-resolution virtual canvas for mobile (1600px long edge).
-    // This provides spacious width and height so tags, text, borders, and photos scale gracefully.
-    const maxDim = 1600;
+    // Generous high-resolution virtual canvas for mobile (1800px long edge).
+    const maxDim = 1800;
     if (ratio <= 1.0) {
       h = maxDim;
       w = Math.round(h * ratio);
@@ -395,9 +402,12 @@ function updateFrameSize() {
 
   // Auto zoom/pan on mobile to fit the large virtual frame seamlessly into screen
   if (isMobile) {
-    const pad = 14;
-    const fitWScale = (vp.width - pad * 2) / w;
-    const fitHScale = (vp.height - pad * 2) / h;
+    const padH = isLand ? 10 : 12;
+    const padV = isLand ? 8 : 12;
+    const availW = Math.max(100, vp.width - padH * 2);
+    const availH = Math.max(100, vp.height - padV * 2);
+    const fitWScale = availW / w;
+    const fitHScale = availH / h;
     zoomScale = Math.round(Math.min(fitWScale, fitHScale) * 1000) / 1000;
     zoomPanX = 0;
     zoomPanY = 0;
@@ -1558,15 +1568,15 @@ function getFitScale() {
   const vp = viewport.getBoundingClientRect();
   const fw = parseFloat(frame.style.width) || 1000;
   const fh = parseFloat(frame.style.height) || 800;
-  const isMobile = window.innerWidth <= 768;
-  const pad = isMobile ? 14 : 40;
+  const isMobile = isMobileUI();
+  const pad = isMobile ? 10 : 40;
   const fitW = (vp.width - pad * 2) / fw;
   const fitH = (vp.height - pad * 2) / fh;
   return Math.max(0.05, Math.min(fitW, fitH));
 }
 
 function resetZoom() {
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = isMobileUI();
   zoomScale = isMobile ? Math.round(getFitScale() * 1000) / 1000 : 1.0;
   zoomPanX = 0;
   zoomPanY = 0;
@@ -2412,3 +2422,20 @@ editorViewport?.addEventListener('wheel', e => {
   editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorScale + (e.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10));
   updateEditorTransform();
 }, { passive: false });
+
+
+const btnMobileExportDock = $('#btn-mobile-export-dock');
+btnMobileExportDock?.addEventListener('click', () => {
+  document.getElementById('export-modal')?.removeAttribute('hidden');
+});
+
+window.addEventListener('resize', () => {
+  if (isMobileUI()) {
+    updateFrameSize();
+  }
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    updateFrameSize();
+  }, 150);
+});

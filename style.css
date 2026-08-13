@@ -40,7 +40,12 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .mobile-export-btn{display:none !important}
 
 /* MOBILE & RESPONSIVE TOUCH STYLES */
-.mobile-bottom-bar{display:none}
+
+  .mobile-dock-tg, .mobile-dock-export {
+    display: none;
+  }
+
+  .mobile-bottom-bar{display:none}
 .mobile-drawer-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:900;transition:opacity .2s}
 .mobile-drawer-overlay.active{display:block}
 
@@ -50,7 +55,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .app.fullscreen-preview .zoom-controls{display:none !important}
 .app.fullscreen-preview .canvas-viewport{height:100vh !important;height:100dvh !important}
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (orientation: landscape) and (max-height: 550px) {
   /* ========== HEADER: Compact 44px ========== */
   .navbar{height:44px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;z-index:auto;gap:6px}
   .navbar-left{gap:6px;flex-shrink:0}
@@ -111,6 +116,11 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .zoom-controls{display:none !important}
 
   /* ========== MOBILE BOTTOM NAVIGATION ========== */
+  
+  .mobile-dock-tg, .mobile-dock-export {
+    display: none;
+  }
+
   .mobile-bottom-bar{
     display:flex;position:fixed;bottom:0;left:0;width:100%;
     height:calc(56px + env(safe-area-inset-bottom));
@@ -536,7 +546,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
   display: none; /* Hidden on desktop by default */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (orientation: landscape) and (max-height: 550px) {
   .canvas-mode-switcher {
     position: absolute;
     top: 12px;
@@ -628,7 +638,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
 }
 
 /* MOBILE TELEGRAM BUTTON STYLES */
-@media (max-width: 768px) {
+@media (max-width: 768px), (orientation: landscape) and (max-height: 550px) {
   .btn-tg {
     display: inline-flex !important;
     width: 36px !important;
@@ -643,6 +653,148 @@ body.in-editor-mode .inspector-section #btn-deselect {
   .btn-tg svg {
     width: 36px !important;
     height: 36px !important;
+    display: block !important;
+  }
+}
+
+
+/* ============================================================
+   NATIVE MOBILE LANDSCAPE MODE (Clean Top + Right Dock)
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 550px) {
+  /* Hide top navbar completely in landscape */
+  .navbar {
+    display: none !important;
+  }
+  
+  /* Floating switcher at top center */
+  .canvas-mode-switcher {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 120 !important;
+  }
+
+  /* Fullscreen studio body */
+  .studio-body {
+    height: 100vh !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow: hidden !important;
+  }
+
+  /* Unobstructed, maximum size canvas viewport */
+  .canvas-viewport {
+    flex: 1 !important;
+    width: calc(100vw - 64px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    padding: 8px 12px !important;
+    margin-right: 64px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Vertical Right-Side Navigation Dock */
+  .mobile-bottom-bar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 64px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border-top: none !important;
+    border-left: 1px solid var(--border) !important;
+    background: var(--bg-topbar) !important;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.6) !important;
+    z-index: 1100 !important;
+  }
+
+  .mobile-tab-btn {
+    width: 54px !important;
+    height: 48px !important;
+    flex: none !important;
+    border-radius: 10px !important;
+  }
+  .mobile-tab-btn span {
+    font-size: 8px !important;
+  }
+  .mobile-tab-btn svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+  .mobile-dock-tg, .mobile-dock-export {
+    display: flex !important;
+  }
+
+  /* Side-sliding sheets from the right */
+  .studio-sidebar, .inspector-section, .navbar-center {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 64px !important;
+    left: auto !important;
+    width: 320px !important;
+    max-width: calc(100vw - 70px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border-left: 1px solid var(--border) !important;
+    transform: translateX(calc(100% + 70px)) !important;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 1050 !important;
+    box-shadow: -12px 0 36px rgba(0,0,0,0.85) !important;
+  }
+  .studio-sidebar.mobile-open, .inspector-section.mobile-open, .navbar-center.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .drawer-handle {
+    display: none !important;
+  }
+
+  /* Fullscreen Photo Editor in Landscape */
+  .editor-header {
+    height: 44px !important;
+    padding: 0 12px !important;
+  }
+  .editor-viewport {
+    height: calc(100vh - 44px) !important;
+    height: calc(100dvh - 44px) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-right: 320px !important;
+  }
+  body.in-editor-mode .inspector-section {
+    position: fixed !important;
+    top: 44px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 320px !important;
+    height: calc(100vh - 44px) !important;
+    height: calc(100dvh - 44px) !important;
+    max-height: calc(100vh - 44px) !important;
+    max-height: calc(100dvh - 44px) !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    border-left: 1px solid var(--border) !important;
+    box-shadow: none !important;
+    z-index: 2100 !important;
     display: block !important;
   }
 }
