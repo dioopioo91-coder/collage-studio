@@ -527,12 +527,17 @@ body.in-editor-mode .inspector-section {
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
-  z-index: 2100 !important;
+  z-index: 2500 !important;
   transform: translateY(0) !important;
   display: block !important;
-  max-height: 40vh !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-height: 42vh !important;
+  height: auto !important;
   border-radius: 16px 16px 0 0 !important;
-  box-shadow: 0 -12px 40px rgba(0,0,0,0.9);
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.95);
+  background: var(--bg-sidebar) !important;
+  border-top: 1px solid var(--border) !important;
 }
 
 body.in-editor-mode .inspector-section #btn-deselect {

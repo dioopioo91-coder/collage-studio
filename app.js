@@ -1706,9 +1706,9 @@ const sidebarPanel       = $('.studio-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
 
-/* Move inspector-section to body level on mobile for drawer separation */
-if (window.innerWidth <= 768 && adjPanel && sidebarPanel) {
-  document.body.insertBefore(adjPanel, document.querySelector('.mobile-drawer-overlay'));
+/* Move inspector-section to body level so it is always accessible and never trapped */
+if (adjPanel) {
+  document.body.insertBefore(adjPanel, document.querySelector('.mobile-drawer-overlay') || document.body.firstChild);
 }
 
 const allDrawers = [sidebarPanel, adjPanel, navbarCenter].filter(Boolean);
