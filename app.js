@@ -233,56 +233,93 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- AUTO LEGO LAYOUT ---- */
+/* ---- AUTO LEGO / SMART GRID LAYOUT ---- */
 function redistributeLayout() {
   const n = canvasCells.length;
   if (n === 0) return;
 
   const fw = frame.offsetWidth || 1000;
   const fh = frame.offsetHeight || 800;
-  const ratio = getRatio();
+  const canvasRatio = fw / fh;
   const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
 
+  // 1. Determine optimal columns based on canvas aspect ratio and image count
   let cols;
-  if (ratio < 0.75) {
+  if (canvasRatio < 0.75) {
     cols = n === 1 ? 1 : 2;
-  } else if (ratio < 1.1) {
-    cols = n <= 2 ? n : (n <= 4 ? 2 : 3);
+  } else if (canvasRatio < 1.1) {
+    cols = n === 1 ? 1 : (n <= 4 ? 2 : 3);
+  } else if (canvasRatio < 1.6) {
+    cols = n === 1 ? 1 : (n === 2 ? 2 : (n <= 6 ? 3 : 4));
   } else {
     cols = n <= 3 ? n : (n <= 6 ? 3 : 4);
   }
 
-  let currentYPx = gap;
+  // 2. Group cells into rows
+  const rows = [];
+  for (let i = 0; i < n; i += cols) {
+    rows.push(canvasCells.slice(i, i + cols));
+  }
+  const numRows = rows.length;
 
-  for (let startIdx = 0; startIdx < n; startIdx += cols) {
-    const rowCells = canvasCells.slice(startIdx, startIdx + cols);
-    const countInRow = rowCells.length;
+  // 3. Compute base unscaled dimensions for each row
+  const rowHeights = [];
+  const rowItemWidths = [];
+  const rowCardHeights = [];
 
-    const itemWPx = Math.max(40, (fw - (cols + 1) * gap) / cols);
-    let maxRowHPx = 0;
-    const itemHeightsPx = [];
+  for (let r = 0; r < numRows; r++) {
+    const row = rows[r];
+    const count = row.length;
+    const itemW = Math.max(20, (fw - (count + 1) * gap) / count);
+    rowItemWidths.push(itemW);
 
-    for (let j = 0; j < countInRow; j++) {
-      const cell = rowCells[j];
+    let maxRowH = 0;
+    const cardHeights = [];
+    for (let j = 0; j < count; j++) {
+      const cell = row[j];
       const asset = library.find(a => a.id === cell.assetId);
       const ir = asset ? (asset.natW / asset.natH) : 1;
-      const imgH = itemWPx / ir;
-      const ph = tagH + imgH;
-      itemHeightsPx.push(ph);
-      if (ph > maxRowHPx) maxRowHPx = ph;
+      const imgH = itemW / ir;
+      const cardH = tagH + imgH;
+      cardHeights.push(cardH);
+      if (cardH > maxRowH) maxRowH = cardH;
+    }
+    rowHeights.push(maxRowH);
+    rowCardHeights.push(cardHeights);
+  }
+
+  // 4. Auto-fit scale factor: ensure the entire grid fits inside available frame height without any overflow
+  const availH = fh - (numRows + 1) * gap;
+  const sumRowH = rowHeights.reduce((a, b) => a + b, 0);
+  const scale = (sumRowH > 0 && availH > 0) ? Math.min(1.0, availH / sumRowH) : 1.0;
+
+  // 5. Calculate vertical start offset to center the layout vertically inside frame
+  const scaledTotalH = rowHeights.reduce((sum, h) => sum + h * scale, 0) + (numRows + 1) * gap;
+  const startOffsetY = Math.max(gap, (fh - scaledTotalH) / 2 + gap);
+
+  // 6. Assign exact normalized fx, fy, fw, fh to each cell
+  let curY = startOffsetY;
+  for (let r = 0; r < numRows; r++) {
+    const row = rows[r];
+    const count = row.length;
+    const itemW_scaled = rowItemWidths[r] * scale;
+    const rowW_scaled = count * itemW_scaled + (count - 1) * gap;
+    const startOffsetX = Math.max(gap, (fw - rowW_scaled) / 2);
+    const rowH_scaled = rowHeights[r] * scale;
+
+    for (let j = 0; j < count; j++) {
+      const cell = row[j];
+      const cardH_scaled = rowCardHeights[r][j] * scale;
+      const xPx = startOffsetX + j * (itemW_scaled + gap);
+      const yPx = curY;
+
+      cell.fx = clamp(xPx / fw, 0, 1);
+      cell.fy = clamp(yPx / fh, 0, 1);
+      cell.fw = clamp(itemW_scaled / fw, 0.05, 1);
+      cell.fh = clamp(cardH_scaled / fh, 0.05, 1);
     }
 
-    for (let j = 0; j < countInRow; j++) {
-      const cell = rowCells[j];
-      const oxPx = gap + j * (itemWPx + gap);
-
-      cell.fx = Math.max(0, oxPx / fw);
-      cell.fy = Math.max(0, currentYPx / fh);
-      cell.fw = Math.min(1, itemWPx / fw);
-      cell.fh = Math.min(1, itemHeightsPx[j] / fh);
-    }
-
-    currentYPx += maxRowHPx + gap;
+    curY += rowH_scaled + gap;
   }
 }
 
@@ -301,10 +338,9 @@ function updateFrameSize() {
   frame.style.width = Math.round(w) + 'px';
   frame.style.height = Math.round(h) + 'px';
   
-  // Auto zoom/pan on mobile startup to fit this big virtual viewport on screen nicely
-  if (isMobile && !window.hasSetInitialMobileZoom) {
-    window.hasSetInitialMobileZoom = true;
-    const pad = 15;
+  // Auto zoom/pan on mobile to fit the frame into screen
+  if (isMobile) {
+    const pad = 12;
     const fitWScale = (vp.width - pad*2) / w;
     const fitHScale = (vp.height - pad*2) / h;
     zoomScale = Math.round(Math.min(fitWScale, fitHScale) * 100) / 100;
@@ -367,10 +403,8 @@ function renderCollage() {
     const px = Math.round(cell.fx * fw);
     const py = Math.round(cell.fy * fh);
     const pw = Math.round(cell.fw * fw);
-    const imgH = Math.round(pw / ir);
-    const ph = tagH + imgH;
-
-    cell.fh = ph / fh;
+    const ph = Math.round(cell.fh * fh);
+    const imgH = Math.max(10, ph - tagH);
 
     // Outer Cell container
     const div = document.createElement('div');
@@ -1182,9 +1216,9 @@ $('#stroke-enable').addEventListener('change', e => {
   renderCollage();
 });
 
-bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
+bindSliderAndNum(sGap, nGap, val => { gap = val; redistributeLayout(); renderCollage(); });
 bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
-bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
+bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; redistributeLayout(); renderCollage(); });
 bindSliderAndNum(sFrameStroke, nFrameStroke, val => { strokeWidth = val; renderCollage(); });
 $$('.ratio-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1282,10 +1316,10 @@ async function runExportProcess(baseW, mimeType) {
     const px = cell.fx * targetW;
     const py = cell.fy * targetH;
     const pw = cell.fw * targetW;
+    const ph = cell.fh * targetH;
 
     const tagH = tagEnabled ? Math.round(tagPx*1.6 + 6*scale) : 0;
-    const imgH = pw / ir;
-    const ph = tagH + imgH;
+    const imgH = Math.max(10, ph - tagH);
 
     const img = await loadImage(asset.blob instanceof Blob ? URL.createObjectURL(asset.blob) : asset.thumbUrl);
 
