@@ -193,7 +193,7 @@ const libGrid     = $('#library-grid');
 const libEmpty    = $('#library-empty');
 const libCount    = $('#lib-count');
 const canvasInfo  = $('#canvas-info');
-const fileInput   = $('#file-input');
+// fileInput removed — upload uses #global-file-input at body level
 const adjPanel    = $('#adjustments-panel');
 const exportModal = $('#export-modal');
 const exportProg  = $('#export-progress');
@@ -1064,15 +1064,18 @@ async function removeFromLibrary(id) {
   renderCollage();
 }
 
-/* ---- FILE UPLOAD ---- */
+/* ---- FILE UPLOAD (GLOBAL INPUT — MOBILE-SAFE) ---- */
+const globalFileInput = document.getElementById('global-file-input');
+
 async function handleFiles(files) {
+  console.log('[Upload] handleFiles called with', files?.length, 'files');
   if (!files || files.length === 0) return;
   const newAssetIds = [];
   for (const file of files) {
     const isImg = (file.type && file.type.startsWith('image/')) ||
                   (file.name && file.name.match(/\.(jpg|jpeg|png|webp|heic|heif|gif|bmp|svg)$/i)) ||
                   (!file.type && file.size > 0);
-    if (!isImg) continue;
+    if (!isImg) { console.log('[Upload] Skipping non-image:', file.name, file.type); continue; }
 
     const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
     const blob = file;
@@ -1080,6 +1083,7 @@ async function handleFiles(files) {
     const dims = await getImageDims(thumbUrl);
     library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
     newAssetIds.push(id);
+    console.log('[Upload] Added asset:', id, dims.w + 'x' + dims.h);
     try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
   }
   renderLibrary();
@@ -1095,19 +1099,50 @@ async function handleFiles(files) {
   }
 }
 
-const canvasFileInput = $('#canvas-file-input');
+// Single global file input change handler
+if (globalFileInput) {
+  globalFileInput.addEventListener('change', e => {
+    console.log('[Upload] Global input change event fired, files:', e.target.files?.length);
+    const files = Array.from(e.target.files);
+    globalFileInput.value = ''; // Reset so same file can be re-selected
+    if (files.length > 0) handleFiles(files);
+  });
+} else {
+  console.error('[Upload] CRITICAL: #global-file-input not found in DOM!');
+}
 
-fileInput?.addEventListener('change', e => {
-  const files = Array.from(e.target.files);
-  fileInput.value = '';
-  handleFiles(files);
-});
+// Helper: trigger file picker from the global input
+function triggerFileUpload() {
+  console.log('[Upload] triggerFileUpload called');
+  if (globalFileInput) {
+    globalFileInput.value = ''; // Reset first
+    globalFileInput.click();
+  } else {
+    console.error('[Upload] Cannot trigger — globalFileInput missing');
+  }
+}
 
-canvasFileInput?.addEventListener('change', e => {
-  const files = Array.from(e.target.files);
-  canvasFileInput.value = '';
-  handleFiles(files);
-});
+// Wire up Upload button
+const btnUpload = $('#btn-upload');
+if (btnUpload) {
+  btnUpload.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[Upload] btn-upload clicked');
+    triggerFileUpload();
+  });
+}
+
+// Wire up empty canvas area
+const emptyStateEl = $('#empty-state');
+if (emptyStateEl) {
+  emptyStateEl.style.cursor = 'pointer';
+  emptyStateEl.addEventListener('click', e => {
+    e.preventDefault();
+    console.log('[Upload] empty-state clicked');
+    triggerFileUpload();
+  });
+}
 
 /* ---- DRAG & DROP FILES ---- */
 viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
