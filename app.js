@@ -233,7 +233,7 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- AUTO LEGO / SMART GRID LAYOUT ---- */
+/* ---- SMART JUSTIFIED & ADAPTIVE BENTO LAYOUT ENGINE ---- */
 function redistributeLayout() {
   const n = canvasCells.length;
   if (n === 0) return;
@@ -243,83 +243,124 @@ function redistributeLayout() {
   const canvasRatio = fw / fh;
   const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
 
-  // 1. Determine optimal columns based on canvas aspect ratio and image count
-  let cols;
-  if (canvasRatio < 0.75) {
-    cols = n === 1 ? 1 : 2;
-  } else if (canvasRatio < 1.1) {
-    cols = n === 1 ? 1 : (n <= 4 ? 2 : 3);
-  } else if (canvasRatio < 1.6) {
-    cols = n === 1 ? 1 : (n === 2 ? 2 : (n <= 6 ? 3 : 4));
-  } else {
-    cols = n <= 3 ? n : (n <= 6 ? 3 : 4);
+  // Gather individual asset aspect ratios (ir = width / height)
+  const itemsIr = canvasCells.map(c => {
+    const asset = library.find(a => a.id === c.assetId);
+    return asset ? (asset.natW / asset.natH) : 1;
+  });
+
+  // Candidate row partition generator
+  function getPartitions(count) {
+    if (count === 1) return [[1]];
+    if (count === 2) return (canvasRatio >= 0.9) ? [[2], [1, 1]] : [[1, 1], [2]];
+    if (count === 3) return [[3], [2, 1], [1, 2], [1, 1, 1]];
+    if (count === 4) return [[2, 2], [3, 1], [1, 3], [4], [2, 1, 1], [1, 2, 1], [1, 1, 2]];
+    if (count === 5) return [[3, 2], [2, 3], [2, 2, 1], [1, 2, 2], [2, 1, 2], [1, 3, 1]];
+    if (count === 6) return [[3, 3], [2, 2, 2], [2, 4], [4, 2], [2, 3, 1], [1, 3, 2], [1, 2, 3], [3, 2, 1]];
+    if (count === 7) return [[4, 3], [3, 4], [3, 2, 2], [2, 3, 2], [2, 2, 3]];
+    if (count === 8) return [[4, 4], [3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 4, 2]];
+    
+    // For n >= 9
+    const cols = (canvasRatio < 1.0) ? 2 : (canvasRatio < 1.5 ? 3 : 4);
+    const rowsCnt = Math.ceil(count / cols);
+    const base = new Array(rowsCnt - 1).fill(cols);
+    const rem = count - (cols * (rowsCnt - 1));
+    base.push(rem);
+    return [base];
   }
 
-  // 2. Group cells into rows
-  const rows = [];
-  for (let i = 0; i < n; i += cols) {
-    rows.push(canvasCells.slice(i, i + cols));
-  }
-  const numRows = rows.length;
+  let bestScore = -Infinity;
+  let bestBoxes = null;
 
-  // 3. Compute base unscaled dimensions for each row
-  const rowHeights = [];
-  const rowItemWidths = [];
-  const rowCardHeights = [];
+  const partitions = getPartitions(n);
 
-  for (let r = 0; r < numRows; r++) {
-    const row = rows[r];
-    const count = row.length;
-    const itemW = Math.max(20, (fw - (count + 1) * gap) / count);
-    rowItemWidths.push(itemW);
+  for (const partition of partitions) {
+    const rowsData = [];
+    let idx = 0;
+    let valid = true;
 
-    let maxRowH = 0;
-    const cardHeights = [];
-    for (let j = 0; j < count; j++) {
-      const cell = row[j];
-      const asset = library.find(a => a.id === cell.assetId);
-      const ir = asset ? (asset.natW / asset.natH) : 1;
-      const imgH = itemW / ir;
-      const cardH = tagH + imgH;
-      cardHeights.push(cardH);
-      if (cardH > maxRowH) maxRowH = cardH;
-    }
-    rowHeights.push(maxRowH);
-    rowCardHeights.push(cardHeights);
-  }
+    for (const count of partition) {
+      const rowIrs = itemsIr.slice(idx, idx + count);
+      const sumIr = rowIrs.reduce((a, b) => a + b, 0);
+      const availW = fw - (count + 1) * gap;
+      if (availW <= 0 || sumIr <= 0) { valid = false; break; }
 
-  // 4. Auto-fit scale factor: ensure the entire grid fits inside available frame height without any overflow
-  const availH = fh - (numRows + 1) * gap;
-  const sumRowH = rowHeights.reduce((a, b) => a + b, 0);
-  const scale = (sumRowH > 0 && availH > 0) ? Math.min(1.0, availH / sumRowH) : 1.0;
+      const imgH = availW / sumIr;
+      const rowH = tagH + imgH;
+      const itemWs = rowIrs.map(ir => imgH * ir);
 
-  // 5. Calculate vertical start offset to center the layout vertically inside frame
-  const scaledTotalH = rowHeights.reduce((sum, h) => sum + h * scale, 0) + (numRows + 1) * gap;
-  const startOffsetY = Math.max(gap, (fh - scaledTotalH) / 2 + gap);
-
-  // 6. Assign exact normalized fx, fy, fw, fh to each cell
-  let curY = startOffsetY;
-  for (let r = 0; r < numRows; r++) {
-    const row = rows[r];
-    const count = row.length;
-    const itemW_scaled = rowItemWidths[r] * scale;
-    const rowW_scaled = count * itemW_scaled + (count - 1) * gap;
-    const startOffsetX = Math.max(gap, (fw - rowW_scaled) / 2);
-    const rowH_scaled = rowHeights[r] * scale;
-
-    for (let j = 0; j < count; j++) {
-      const cell = row[j];
-      const cardH_scaled = rowCardHeights[r][j] * scale;
-      const xPx = startOffsetX + j * (itemW_scaled + gap);
-      const yPx = curY;
-
-      cell.fx = clamp(xPx / fw, 0, 1);
-      cell.fy = clamp(yPx / fh, 0, 1);
-      cell.fw = clamp(itemW_scaled / fw, 0.05, 1);
-      cell.fh = clamp(cardH_scaled / fh, 0.05, 1);
+      rowsData.push({
+        count,
+        irs: rowIrs,
+        indices: Array.from({ length: count }, (_, k) => idx + k),
+        rowH,
+        imgH,
+        itemWs
+      });
+      idx += count;
     }
 
-    curY += rowH_scaled + gap;
+    if (!valid) continue;
+
+    const numRows = rowsData.length;
+    const availH = fh - (numRows + 1) * gap;
+    const sumRowsH = rowsData.reduce((sum, r) => sum + r.rowH, 0);
+    const scale = (sumRowsH > 0 && availH > 0) ? Math.min(1.0, availH / sumRowsH) : 1.0;
+
+    const scaledTotalH = rowsData.reduce((sum, r) => sum + r.rowH * scale, 0) + (numRows + 1) * gap;
+    const startY = (fh - scaledTotalH) / 2 + gap;
+    let curY = startY;
+    let totalArea = 0;
+    const candidateBoxes = new Array(n);
+
+    for (const r of rowsData) {
+      const ws = r.itemWs.map(w => w * scale);
+      const rowWScaled = ws.reduce((a, b) => a + b, 0) + (r.count - 1) * gap;
+      const startX = (fw - rowWScaled) / 2;
+      let curX = startX;
+      const cardH = r.rowH * scale;
+
+      for (let j = 0; j < r.count; j++) {
+        const itemIdx = r.indices[j];
+        const bw = ws[j];
+        const bh = cardH;
+        candidateBoxes[itemIdx] = {
+          fx: clamp(curX / fw, 0, 1),
+          fy: clamp(curY / fh, 0, 1),
+          fw: clamp(bw / fw, 0.02, 1),
+          fh: clamp(bh / fh, 0.02, 1)
+        };
+        totalArea += bw * bh;
+        curX += bw + gap;
+      }
+      curY += cardH + gap;
+    }
+
+    const utilization = totalArea / (fw * fh);
+    const rowHeights = rowsData.map(r => r.rowH * scale);
+    const avgH = rowHeights.reduce((a, b) => a + b, 0) / rowHeights.length;
+    const varH = rowHeights.reduce((sum, h) => sum + Math.pow(h - avgH, 2), 0) / rowHeights.length;
+    const stdH = Math.sqrt(varH);
+
+    // Score combines max area fill and row height harmony
+    const score = (utilization * 100) - (stdH / (avgH || 1)) * 12;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestBoxes = candidateBoxes;
+    }
+  }
+
+  // Assign best layout to canvasCells
+  if (bestBoxes) {
+    for (let i = 0; i < n; i++) {
+      if (bestBoxes[i]) {
+        canvasCells[i].fx = bestBoxes[i].fx;
+        canvasCells[i].fy = bestBoxes[i].fy;
+        canvasCells[i].fw = bestBoxes[i].fw;
+        canvasCells[i].fh = bestBoxes[i].fh;
+      }
+    }
   }
 }
 
