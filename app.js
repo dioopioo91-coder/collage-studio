@@ -71,9 +71,20 @@ function getContrastColor(hex) {
 
 function getImageDims(url) {
   return new Promise(resolve => {
+    let done = false;
     const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve({ w: 1, h: 1 });
+    const timer = setTimeout(() => {
+      if (!done) { done = true; resolve({ w: 800, h: 600 }); }
+    }, 1500);
+    img.onload = () => {
+      if (!done) {
+        done = true; clearTimeout(timer);
+        resolve({ w: img.naturalWidth || 800, h: img.naturalHeight || 600 });
+      }
+    };
+    img.onerror = () => {
+      if (!done) { done = true; clearTimeout(timer); resolve({ w: 800, h: 600 }); }
+    };
     img.src = url;
   });
 }
@@ -1007,16 +1018,33 @@ async function removeFromLibrary(id) {
 
 /* ---- FILE UPLOAD ---- */
 async function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  const newAssetIds = [];
   for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    const id = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+    const isImg = (file.type && file.type.startsWith('image/')) ||
+                  (file.name && file.name.match(/\.(jpg|jpeg|png|webp|heic|heif|gif|bmp|svg)$/i)) ||
+                  (!file.type && file.size > 0);
+    if (!isImg) continue;
+
+    const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
     const blob = file;
     const thumbUrl = URL.createObjectURL(blob);
     const dims = await getImageDims(thumbUrl);
     library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
+    newAssetIds.push(id);
     try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
   }
   renderLibrary();
+
+  // AUTOMATICALLY add newly uploaded images directly to canvas!
+  if (newAssetIds.length > 0) {
+    for (const assetId of newAssetIds) {
+      canvasCells.push({ assetId, adj: defaultAdj(), fx: 0, fy: 0, fw: 0, fh: 0 });
+    }
+    redistributeLayout();
+    renderCollage();
+    if (typeof closeMobileDrawers === 'function') closeMobileDrawers();
+  }
 }
 
 const canvasFileInput = $('#canvas-file-input');
