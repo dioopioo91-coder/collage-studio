@@ -159,11 +159,12 @@ function generateNoiseDataUrl(amount) {
 function drawLinesOnCanvas(canvas, linesObj, width, height) {
   const w = Math.max(10, Math.round(width));
   const h = Math.max(10, Math.round(height));
-  canvas.width = w;
-  canvas.height = h;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, w, h);
-  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(dpr, dpr);
 
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
@@ -2101,8 +2102,11 @@ function renderEditorImage() {
   const asset = library.find(a => a.id === cell.assetId);
   if (!asset) return;
 
+  const isMobile = window.innerWidth <= 768;
   const vpW = editorViewport.offsetWidth || window.innerWidth;
-  const vpH = (editorViewport.offsetHeight || window.innerHeight) * 0.6;
+  const totalH = editorViewport.offsetHeight || window.innerHeight;
+  const reservedBottom = (adjPanel && !adjPanel.hidden) ? (isMobile ? 300 : 0) : 0;
+  const vpH = Math.max(200, totalH - reservedBottom - 48);
   const natW = asset.natW || 1, natH = asset.natH || 1;
   const ir = natW / natH;
 
@@ -2112,10 +2116,10 @@ function renderEditorImage() {
 
   let pw, ph, imgH;
   if (ir > vpW / vpH) {
-    pw = vpW - 48;
+    pw = Math.max(100, vpW - 48);
     imgH = Math.round(pw / ir);
   } else {
-    imgH = vpH - tagH - 48;
+    imgH = Math.max(100, vpH - tagH);
     pw = Math.round(imgH * ir);
   }
   ph = tagH + imgH;
