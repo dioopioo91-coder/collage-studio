@@ -332,11 +332,7 @@ function renderCollage() {
   const fw = frame.offsetWidth;
   const fh = frame.offsetHeight;
   const contrastColor = getContrastColor(frameColor);
-  let activeTagSize = tagSize;
-  if (window.innerWidth <= 768) {
-    activeTagSize = Math.max(8, Math.round(tagSize * 0.6)); // 40% smaller on mobile
-  }
-  const tagH = tagEnabled ? Math.round(activeTagSize * 1.5 + 4) : 0;
+  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
   const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
@@ -378,7 +374,7 @@ function renderCollage() {
       const tag = document.createElement('div');
       tag.className = 'cell-tag';
       tag.textContent = '@IMAGE' + (i + 1);
-      tag.style.fontSize = activeTagSize + 'px';
+      tag.style.fontSize = tagSize + 'px';
       tag.style.height = tagH + 'px';
       tag.style.lineHeight = tagH + 'px';
       tag.style.background = frameColor;
@@ -1090,11 +1086,14 @@ async function handleFiles(files) {
   }
 }
 
-const canvasFileInput = $('#canvas-file-input');
-
-
-
-
+const globalFileInput = document.getElementById('global-file-input');
+if (globalFileInput) {
+  globalFileInput.addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    globalFileInput.value = '';
+    if (files.length > 0) handleFiles(files);
+  });
+}
 
 /* ---- DRAG & DROP FILES ---- */
 viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
@@ -1644,7 +1643,7 @@ const i18n = {
     done: "Готово",
     emptyNotice: "Перетащите фото или выберите из библиотеки",
     layout: "МАКЕТ",
-    settings: "НАСТРОЙКИ"
+    settings: "РЕДАКТОР"
   },
   en: {
     ratio: "RATIO",
@@ -1785,7 +1784,7 @@ btnEditorSave?.addEventListener('click', closeFullscreenEditor);
 
 function updateEditorTransform() {
   if (editorWrapper) {
-    editorWrapper.style.transform = scale(\) translate(\px, \px);
+    editorWrapper.style.transform = `scale(${editorScale}) translate(${editorPanX}px, ${editorPanY}px)`;
   }
 }
 
@@ -1883,7 +1882,7 @@ function renderEditorImage() {
     const noiseObj = cell.adj.noise;
     const noiseDiv = document.createElement('div');
     noiseDiv.className = 'cell-noise-overlay';
-    noiseDiv.style.backgroundImage = url(\);
+    noiseDiv.style.backgroundImage = `url(${generateNoiseDataUrl(noiseObj.amount)})`;
 
     if (noiseObj.mode === 'region' && noiseObj.box) {
       noiseDiv.style.left = noiseObj.box.x + '%';
@@ -1913,7 +1912,7 @@ function renderEditorImage() {
 
     ['nw', 'ne', 'sw', 'se'].forEach(pos => {
       const h = document.createElement('div');
-      h.className = egion-box-handle rb-\;
+      h.className = `region-box-handle rb-${pos}`;
       h.dataset.rbHandle = pos;
       rb.appendChild(h);
     });
