@@ -193,7 +193,7 @@ const libGrid     = $('#library-grid');
 const libEmpty    = $('#library-empty');
 const libCount    = $('#lib-count');
 const canvasInfo  = $('#canvas-info');
-// fileInput removed — upload uses #global-file-input at body level
+const fileInput   = $('#file-input');
 const adjPanel    = $('#adjustments-panel');
 const exportModal = $('#export-modal');
 const exportProg  = $('#export-progress');
@@ -340,7 +340,6 @@ function renderCollage() {
   const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
-    if (selectedIdx >= 0 && i !== selectedIdx) continue; // Only show the selected image when editing!
     const cell = canvasCells[i];
     if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
     if (!cell.adj.noise) cell.adj.noise = defaultAdj().noise;
@@ -351,28 +350,13 @@ function renderCollage() {
     const natW = asset.natW || 1, natH = asset.natH || 1;
     const ir = natW / natH;
 
-    let px, py, pw, ph, imgH;
-    if (selectedIdx >= 0) {
-      // Fit the selected cell inside the canvas view area
-      const canvasRatio = fw / fh;
-      if (ir > canvasRatio) {
-        pw = fw;
-        imgH = Math.round(pw / ir);
-      } else {
-        imgH = fh - tagH;
-        pw = Math.round(imgH * ir);
-      }
-      px = Math.round((fw - pw) / 2);
-      py = Math.round((fh - (tagH + imgH)) / 2);
-      ph = tagH + imgH;
-    } else {
-      px = Math.round(cell.fx * fw);
-      py = Math.round(cell.fy * fh);
-      pw = Math.round(cell.fw * fw);
-      imgH = Math.round(pw / ir);
-      ph = tagH + imgH;
-      cell.fh = ph / fh;
-    }
+    const px = Math.round(cell.fx * fw);
+    const py = Math.round(cell.fy * fh);
+    const pw = Math.round(cell.fw * fw);
+    const imgH = Math.round(pw / ir);
+    const ph = tagH + imgH;
+
+    cell.fh = ph / fh;
 
     // Outer Cell container
     const div = document.createElement('div');
@@ -848,20 +832,11 @@ function removeCell(idx) {
 
 function selectCell(idx) {
   if (selectedIdx === idx) {
-    selectedIdx = -1;
-    hideInspector();
-    if (typeof closeMobileDrawers === 'function') closeMobileDrawers();
+    closeFullscreenEditor();
   } else {
     selectedIdx = idx;
-    showInspector(idx);
-    if (window.innerWidth <= 768 && typeof closeMobileDrawers === 'function') {
-      closeMobileDrawers();
-      adjPanel?.classList.add('mobile-open');
-      mobileOverlay?.classList.add('active');
-      btnMobileInspector?.classList.add('active');
-    }
+    openFullscreenEditor(idx);
   }
-  renderCollage();
 }
 
 /* ---- BI-DIRECTIONAL SLIDER & NUMBER SYNC ---- */
@@ -924,10 +899,7 @@ function showInspector(idx) {
   $('#noise-amount').value = nObj.amount; $('#noise-amount-num').value = nObj.amount;
 }
 
-function hideInspector() {
-  adjPanel.hidden = true;
-  resetZoomAndPan();
-}
+function hideInspector() { adjPanel.hidden = true; }
 
 // Direct Segmented Mode Handler (Exposed globally for onclick)
 window.setEffectMode = function(effectKey, mode) {
@@ -1087,18 +1059,15 @@ async function removeFromLibrary(id) {
   renderCollage();
 }
 
-/* ---- FILE UPLOAD (GLOBAL INPUT — MOBILE-SAFE) ---- */
-const globalFileInput = document.getElementById('global-file-input');
-
+/* ---- FILE UPLOAD ---- */
 async function handleFiles(files) {
-  console.log('[Upload] handleFiles called with', files?.length, 'files');
   if (!files || files.length === 0) return;
   const newAssetIds = [];
   for (const file of files) {
     const isImg = (file.type && file.type.startsWith('image/')) ||
                   (file.name && file.name.match(/\.(jpg|jpeg|png|webp|heic|heif|gif|bmp|svg)$/i)) ||
                   (!file.type && file.size > 0);
-    if (!isImg) { console.log('[Upload] Skipping non-image:', file.name, file.type); continue; }
+    if (!isImg) continue;
 
     const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
     const blob = file;
@@ -1106,7 +1075,6 @@ async function handleFiles(files) {
     const dims = await getImageDims(thumbUrl);
     library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
     newAssetIds.push(id);
-    console.log('[Upload] Added asset:', id, dims.w + 'x' + dims.h);
     try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
   }
   renderLibrary();
@@ -1122,18 +1090,11 @@ async function handleFiles(files) {
   }
 }
 
-// Single global file input change handler — triggered by <label for="global-file-input"> natively
-if (globalFileInput) {
-  globalFileInput.addEventListener('change', e => {
-    console.log('[Upload] Global input change event fired, files:', e.target.files?.length);
-    const files = Array.from(e.target.files);
-    globalFileInput.value = ''; // Reset so same file can be re-selected
-    if (files.length > 0) handleFiles(files);
-  });
-  console.log('[Upload] Global file input ready');
-} else {
-  console.error('[Upload] CRITICAL: #global-file-input not found in DOM!');
-}
+const canvasFileInput = $('#canvas-file-input');
+
+
+
+
 
 /* ---- DRAG & DROP FILES ---- */
 viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
@@ -1437,13 +1398,6 @@ function updateZoomTransform() {
   if (zoomValEl) zoomValEl.textContent = Math.round(zoomScale * 100) + '%';
 }
 
-function resetZoomAndPan() {
-  zoomScale = 1.0;
-  zoomPanX = 0;
-  zoomPanY = 0;
-  updateZoomTransform();
-}
-
 viewport.addEventListener('wheel', e => {
   e.preventDefault();
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
@@ -1551,16 +1505,9 @@ const allDrawers = [figmaSidebar, adjPanel, navbarCenter].filter(Boolean);
 const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);
 
 function closeMobileDrawers() {
-  // If inspector drawer was open, deselect so canvas becomes pannable
-  const wasInspectorOpen = adjPanel?.classList.contains('mobile-open');
   allDrawers.forEach(d => { d.classList.remove('mobile-open'); d.style.transform = ''; });
   allTabs.forEach(t => t.classList.remove('active'));
   mobileOverlay?.classList.remove('active');
-  if (wasInspectorOpen && selectedIdx >= 0) {
-    selectedIdx = -1;
-    hideInspector();
-    renderCollage();
-  }
 }
 
 function openMobileDrawer(drawer, tab) {
@@ -1576,19 +1523,12 @@ function openMobileDrawer(drawer, tab) {
 btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
 btnMobileInspector?.addEventListener('click', () => {
-  // Only open editor if a cell is selected
   if (selectedIdx < 0 || selectedIdx >= canvasCells.length) {
-    // Brief visual hint: flash the button
     btnMobileInspector.style.color = '#ff4466';
     setTimeout(() => { btnMobileInspector.style.color = ''; }, 600);
     return;
   }
-  if (adjPanel?.hasAttribute('hidden')) {
-    adjPanel.removeAttribute('hidden');
-  }
-  adjPanel.classList.remove('no-selection');
-  showInspector(selectedIdx);
-  openMobileDrawer(adjPanel, btnMobileInspector);
+  openFullscreenEditor(selectedIdx);
 });
 mobileOverlay?.addEventListener('click', closeMobileDrawers);
 
@@ -1704,7 +1644,7 @@ const i18n = {
     done: "Готово",
     emptyNotice: "Перетащите фото или выберите из библиотеки",
     layout: "МАКЕТ",
-    settings: "РЕДАКТОР"
+    settings: "НАСТРОЙКИ"
   },
   en: {
     ratio: "RATIO",
@@ -1794,3 +1734,381 @@ $$('.lang-btn').forEach(btn => {
   renderCollage();
   applyLanguage(currentLang);
 })();
+
+
+/* ============================================================
+   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style)
+   ============================================================ */
+let editorScale = 1.0;
+let editorPanX = 0;
+let editorPanY = 0;
+
+const editorOverlay = document.getElementById('editor-mode-overlay');
+const editorViewport = document.getElementById('editor-viewport');
+const editorWrapper = document.getElementById('editor-canvas-wrapper');
+const editorImgContainer = document.getElementById('editor-image-container');
+
+const btnEditorClose = document.getElementById('btn-editor-close');
+const btnEditorSave = document.getElementById('btn-editor-save');
+
+function openFullscreenEditor(idx) {
+  selectedIdx = idx;
+  document.body.classList.add('in-editor-mode');
+  editorOverlay.removeAttribute('hidden');
+  
+  // Show adjustments panel (raise it above the overlay)
+  showInspector(idx);
+  if (adjPanel) {
+    adjPanel.removeAttribute('hidden');
+    adjPanel.classList.remove('no-selection');
+  }
+  
+  // Reset zoom & pan in editor
+  editorScale = 1.0;
+  editorPanX = 0;
+  editorPanY = 0;
+  updateEditorTransform();
+  
+  renderEditorImage();
+}
+
+function closeFullscreenEditor() {
+  document.body.classList.remove('in-editor-mode');
+  editorOverlay.setAttribute('hidden', 'true');
+  hideInspector();
+  selectedIdx = -1;
+  renderCollage();
+}
+
+btnEditorClose?.addEventListener('click', closeFullscreenEditor);
+btnEditorSave?.addEventListener('click', closeFullscreenEditor);
+
+function updateEditorTransform() {
+  if (editorWrapper) {
+    editorWrapper.style.transform = scale(\) translate(\px, \px);
+  }
+}
+
+function renderEditorImage() {
+  if (!editorImgContainer) return;
+  editorImgContainer.innerHTML = '';
+
+  const cell = canvasCells[selectedIdx];
+  if (!cell) return;
+
+  const asset = library.find(a => a.id === cell.assetId);
+  if (!asset) return;
+
+  const viewportW = editorViewport.offsetWidth || window.innerWidth;
+  const viewportH = (editorViewport.offsetHeight || window.innerHeight) * 0.6; // account for adjustments height
+
+  const natW = asset.natW || 1, natH = asset.natH || 1;
+  const ir = natW / natH;
+
+  const activeTagSize = Math.max(8, Math.round(tagSize * 0.6));
+  const tagH = tagEnabled ? Math.round(activeTagSize * 1.5 + 4) : 0;
+  const contrastColor = getContrastColor(frameColor);
+
+  let pw, ph, imgH;
+  const viewRatio = viewportW / viewportH;
+  if (ir > viewRatio) {
+    pw = viewportW - 48; // padding
+    imgH = Math.round(pw / ir);
+  } else {
+    imgH = viewportH - tagH - 48;
+    pw = Math.round(imgH * ir);
+  }
+  ph = tagH + imgH;
+
+  const inner = document.createElement('div');
+  inner.className = 'cell-inner';
+  inner.style.width = pw + 'px';
+  inner.style.height = ph + 'px';
+  inner.style.borderRadius = radius + 'px';
+  inner.style.border = (strokeEnabled && strokeWidth > 0) ? (strokeWidth + 'px solid ' + frameColor) : 'none';
+
+  if (tagEnabled) {
+    const tag = document.createElement('div');
+    tag.className = 'cell-tag';
+    tag.textContent = '@IMAGE' + (selectedIdx + 1);
+    tag.style.fontSize = activeTagSize + 'px';
+    tag.style.height = tagH + 'px';
+    tag.style.lineHeight = tagH + 'px';
+    tag.style.background = frameColor;
+    tag.style.color = contrastColor;
+    inner.appendChild(tag);
+  }
+
+  const imgWrap = document.createElement('div');
+  imgWrap.className = 'cell-img-wrapper';
+  imgWrap.style.height = imgH + 'px';
+
+  const img = document.createElement('img');
+  img.className = 'cell-img';
+  img.src = asset.thumbUrl;
+  img.draggable = false;
+  img.style.height = '100%';
+  const filterVal = buildSVGFilter(cell, selectedIdx);
+  if (filterVal) img.style.filter = filterVal;
+  imgWrap.appendChild(img);
+
+  // Lines
+  if (cell.adj.lines && cell.adj.lines.enabled) {
+    const linesObj = cell.adj.lines;
+    const lCanvas = document.createElement('canvas');
+    lCanvas.className = 'cell-lines-overlay';
+    lCanvas.style.position = 'absolute';
+    lCanvas.style.pointerEvents = 'none';
+    lCanvas.style.zIndex = '4';
+
+    let boxW = pw, boxH = imgH;
+    if (linesObj.mode === 'region' && linesObj.box) {
+      boxW = Math.round((linesObj.box.w / 100) * pw);
+      boxH = Math.round((linesObj.box.h / 100) * imgH);
+      lCanvas.style.left = linesObj.box.x + '%';
+      lCanvas.style.top = linesObj.box.y + '%';
+      lCanvas.style.width = linesObj.box.w + '%';
+      lCanvas.style.height = linesObj.box.h + '%';
+    } else {
+      lCanvas.style.left = '0'; lCanvas.style.top = '0';
+      lCanvas.style.width = '100%'; lCanvas.style.height = '100%';
+    }
+
+    drawLinesOnCanvas(lCanvas, linesObj, boxW, boxH);
+    imgWrap.appendChild(lCanvas);
+  }
+
+  // Noise
+  if (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.amount > 0) {
+    const noiseObj = cell.adj.noise;
+    const noiseDiv = document.createElement('div');
+    noiseDiv.className = 'cell-noise-overlay';
+    noiseDiv.style.backgroundImage = url(\);
+
+    if (noiseObj.mode === 'region' && noiseObj.box) {
+      noiseDiv.style.left = noiseObj.box.x + '%';
+      noiseDiv.style.top = noiseObj.box.y + '%';
+      noiseDiv.style.width = noiseObj.box.w + '%';
+      noiseDiv.style.height = noiseObj.box.h + '%';
+    } else {
+      noiseDiv.style.left = '0'; noiseDiv.style.top = '0'; noiseDiv.style.width = '100%'; noiseDiv.style.height = '100%';
+    }
+    imgWrap.appendChild(noiseDiv);
+  }
+
+  // Region box selection
+  const isLinesRegion = (cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region');
+  const isNoiseRegion = (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region');
+  const activeEffectKey = isLinesRegion ? 'lines' : (isNoiseRegion ? 'noise' : null);
+
+  if (activeEffectKey) {
+    const box = cell.adj[activeEffectKey].box || { x:10, y:10, w:80, h:80 };
+    const rb = document.createElement('div');
+    rb.className = 'region-box';
+    rb.dataset.effectKey = activeEffectKey;
+    rb.style.left = box.x + '%';
+    rb.style.top = box.y + '%';
+    rb.style.width = box.w + '%';
+    rb.style.height = box.h + '%';
+
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+      const h = document.createElement('div');
+      h.className = egion-box-handle rb-\;
+      h.dataset.rbHandle = pos;
+      rb.appendChild(h);
+    });
+    imgWrap.appendChild(rb);
+  }
+
+  inner.appendChild(imgWrap);
+  editorImgContainer.appendChild(inner);
+}
+
+// Intercept slider updates and redraw editor image
+const oldShowInspector = showInspector;
+showInspector = function(idx) {
+  oldShowInspector(idx);
+  if (selectedIdx === idx && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+    renderEditorImage();
+  }
+};
+
+// Bind sliders input change events to redraw editor
+document.querySelectorAll('.inspector-section input').forEach(input => {
+  input.addEventListener('input', () => {
+    if (selectedIdx >= 0 && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+      renderEditorImage();
+    }
+  });
+  input.addEventListener('change', () => {
+    if (selectedIdx >= 0 && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+      renderEditorImage();
+    }
+  });
+});
+
+// Fullscreen Editor Zoom & Pan controls
+let isPanningEditor = false;
+let editorPanStartX = 0, editorPanStartY = 0;
+let editorPanInitialX = 0, editorPanInitialY = 0;
+
+editorViewport?.addEventListener('pointerdown', e => {
+  const rbHandle = e.target.closest('.region-box-handle');
+  const rbBox    = e.target.closest('.region-box');
+
+  if (rbBox && selectedIdx >= 0) {
+    const effectKey = rbBox.dataset.effectKey || 'lines';
+    const imgWrap = rbBox.closest('.cell-img-wrapper');
+    const wrapRect = imgWrap.getBoundingClientRect();
+    const boxState = canvasCells[selectedIdx].adj[effectKey].box || { x:10, y:10, w:80, h:80 };
+
+    interaction.active = true;
+    interaction.cellIdx = selectedIdx;
+    interaction.mode = rbHandle ? 'rb_resize' : 'rb_move';
+    interaction.rbEdge = rbHandle ? rbHandle.dataset.rbHandle : '';
+    interaction.rbEffectKey = effectKey;
+    interaction.startMouseX = e.clientX;
+    interaction.startMouseY = e.clientY;
+    interaction.startBoxX = boxState.x;
+    interaction.startBoxY = boxState.y;
+    interaction.startBoxW = boxState.w;
+    interaction.startBoxH = boxState.h;
+    interaction.wrapW = wrapRect.width || 100;
+    interaction.wrapH = wrapRect.height || 100;
+
+    editorViewport.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
+
+  // Pan editor canvas
+  isPanningEditor = true;
+  editorPanStartX = e.clientX;
+  editorPanStartY = e.clientY;
+  editorPanInitialX = editorPanX;
+  editorPanInitialY = editorPanY;
+  editorViewport.style.cursor = 'grabbing';
+  editorViewport.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+editorViewport?.addEventListener('pointermove', e => {
+  if (interaction.active && selectedIdx >= 0) {
+    const dx = e.clientX - interaction.startMouseX;
+    const dy = e.clientY - interaction.startMouseY;
+    const dxPct = (dx / (interaction.wrapW * editorScale)) * 100;
+    const dyPct = (dy / (interaction.wrapH * editorScale)) * 100;
+    const cell = canvasCells[selectedIdx];
+
+    const keysToUpdate = [];
+    if (cell.adj.lines && cell.adj.lines.mode === 'region') keysToUpdate.push('lines');
+    if (cell.adj.noise && cell.adj.noise.mode === 'region') keysToUpdate.push('noise');
+    if (keysToUpdate.length === 0) keysToUpdate.push(interaction.rbEffectKey);
+
+    for (const k of keysToUpdate) {
+      const boxState = cell.adj[k].box || { x:10, y:10, w:80, h:80 };
+      if (interaction.mode === 'rb_move') {
+        boxState.x = clamp(interaction.startBoxX + dxPct, 0, 100 - boxState.w);
+        boxState.y = clamp(interaction.startBoxY + dyPct, 0, 100 - boxState.h);
+      } else if (interaction.mode === 'rb_resize') {
+        const edge = interaction.rbEdge;
+        if (edge === 'se') {
+          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+        } else if (edge === 'sw') {
+          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+          boxState.w = newW;
+          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+        } else if (edge === 'ne') {
+          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
+          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+          boxState.h = newH;
+        } else if (edge === 'nw') {
+          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
+          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
+          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
+          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
+          boxState.w = newW;
+          boxState.h = newH;
+        }
+      }
+    }
+    renderEditorImage();
+    return;
+  }
+
+  if (isPanningEditor) {
+    const dx = e.clientX - editorPanStartX;
+    const dy = e.clientY - editorPanStartY;
+    editorPanX = editorPanInitialX + (dx / editorScale);
+    editorPanY = editorPanInitialY + (dy / editorScale);
+    updateEditorTransform();
+  }
+});
+
+editorViewport?.addEventListener('pointerup', e => {
+  if (interaction.active) {
+    interaction.active = false;
+    editorViewport.releasePointerCapture(e.pointerId);
+  }
+  if (isPanningEditor) {
+    isPanningEditor = false;
+    editorViewport.style.cursor = '';
+    editorViewport.releasePointerCapture(e.pointerId);
+  }
+});
+
+// Wheel zoom in editor
+editorViewport?.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorScale + delta) * 10) / 10));
+  updateEditorTransform();
+}, { passive: false });
+
+// Mobile Gestures inside Editor Viewport (Touch Zoom & Pan)
+let editorTouchStartDist = 0;
+let editorTouchStartScale = 1.0;
+let editorTouchStartPanX = 0, editorTouchStartPanY = 0;
+let editorTouchMidX = 0, editorTouchMidY = 0;
+
+editorViewport?.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    isPanningEditor = false;
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    editorTouchStartDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    editorTouchStartScale = editorScale;
+    editorTouchMidX = (t1.clientX + t2.clientX) / 2;
+    editorTouchMidY = (t1.clientY + t2.clientY) / 2;
+    editorTouchStartPanX = editorPanX;
+    editorTouchStartPanY = editorPanY;
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
+editorViewport?.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && editorTouchStartDist > 0) {
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    const distNow = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    const factor = distNow / editorTouchStartDist;
+    editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorTouchStartScale * factor) * 100) / 100));
+
+    const curMidX = (t1.clientX + t2.clientX) / 2;
+    const curMidY = (t1.clientY + t2.clientY) / 2;
+    editorPanX = editorTouchStartPanX + (curMidX - editorTouchMidX);
+    editorPanY = editorTouchStartPanY + (curMidY - editorTouchMidY);
+
+    updateEditorTransform();
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
+editorViewport?.addEventListener('touchend', e => {
+  if (e.touches.length < 2) {
+    editorTouchStartDist = 0;
+  }
+});

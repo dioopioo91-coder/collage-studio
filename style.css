@@ -376,3 +376,105 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .progress-bar-wrap{width:100%;height:5px;background:var(--bg-card);border-radius:3px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)}
 .progress-bar-fill{height:100%;width:0;background:linear-gradient(90deg,#fde047,var(--accent));border-radius:3px;transition:width .2s}
 .modal-status{font-size:11px;color:var(--text-sec);margin-bottom:14px;font-family:var(--font-mono);text-align:center}
+
+/* ============================================================
+   FULLSCREEN PHOTO EDITOR OVERLAY
+   ============================================================ */
+.editor-mode-overlay {
+  position: fixed;
+  inset: 0;
+  background: #09090b;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+}
+.editor-mode-overlay[hidden] {
+  display: none;
+}
+.editor-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #121217;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.editor-title {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text-main);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.btn-editor-back, .btn-editor-save {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.btn-editor-back:hover, .btn-editor-save:hover {
+  background: rgba(255,255,255,0.08);
+}
+.btn-editor-save {
+  color: var(--accent);
+}
+.editor-viewport {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  touch-action: none;
+}
+.editor-canvas-wrapper {
+  position: relative;
+  transform-origin: center center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-image-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Hide normal layout when fullscreen editor is active */
+body.in-editor-mode .mobile-bottom-bar,
+body.in-editor-mode .navbar,
+body.in-editor-mode .studio-body > main,
+body.in-editor-mode .studio-body > aside:not(.inspector-section) {
+  display: none !important;
+}
+
+body.in-editor-mode .inspector-section {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 2100 !important;
+  transform: translateY(0) !important;
+  display: block !important;
+  max-height: 40vh !important;
+  border-radius: 16px 16px 0 0 !important;
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.9);
+}
+
+body.in-editor-mode .inspector-section #btn-deselect {
+  display: none !important;
+}
