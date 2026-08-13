@@ -768,8 +768,20 @@ function removeCell(idx) {
 }
 
 function selectCell(idx) {
-  if (selectedIdx === idx) { selectedIdx = -1; hideInspector(); }
-  else { selectedIdx = idx; showInspector(idx); }
+  if (selectedIdx === idx) {
+    selectedIdx = -1;
+    hideInspector();
+    if (typeof closeMobileDrawers === 'function') closeMobileDrawers();
+  } else {
+    selectedIdx = idx;
+    showInspector(idx);
+    if (window.innerWidth <= 768 && typeof closeMobileDrawers === 'function') {
+      closeMobileDrawers();
+      adjPanel?.classList.add('mobile-open');
+      mobileOverlay?.classList.add('active');
+      btnMobileInspector?.classList.add('active');
+    }
+  }
   renderCollage();
 }
 
@@ -954,6 +966,9 @@ $('#btn-deselect').addEventListener('click', () => { selectedIdx=-1; hideInspect
 
 /* ---- LIBRARY ---- */
 function renderLibrary() {
+  libCount.textContent = library.length;
+  const mobCount = $('#mobile-lib-count');
+  if (mobCount) mobCount.textContent = library.length;
   libGrid.innerHTML = '';
   libEmpty.style.display = library.length === 0 ? 'block' : 'none';
   libCount.textContent = library.length;
@@ -1332,6 +1347,90 @@ viewport.addEventListener('dblclick', e => {
     updateZoomTransform();
   }
 });
+
+/* ---- MOBILE TOUCH GESTURES (PINCH TO ZOOM & 2-FINGER PAN) ---- */
+let touchStartDist = 0;
+let touchStartScale = 1.0;
+let touchStartPanX = 0, touchStartPanY = 0;
+let touchMidX = 0, touchMidY = 0;
+
+viewport.addEventListener('touchstart', e => {
+  if (e.target.closest('.zoom-controls') || e.target.closest('.mobile-bottom-bar') || e.target.closest('.figma-sidebar') || e.target.closest('.inspector-section')) return;
+
+  if (e.touches.length === 2) {
+    isPanningCanvas = true;
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    touchStartDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    touchStartScale = zoomScale;
+    touchMidX = (t1.clientX + t2.clientX) / 2;
+    touchMidY = (t1.clientY + t2.clientY) / 2;
+    touchStartPanX = zoomPanX;
+    touchStartPanY = zoomPanY;
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
+viewport.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && touchStartDist > 0) {
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    const distNow = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    const factor = distNow / touchStartDist;
+    zoomScale = Math.max(0.4, Math.min(3.0, Math.round((touchStartScale * factor) * 100) / 100));
+
+    const curMidX = (t1.clientX + t2.clientX) / 2;
+    const curMidY = (t1.clientY + t2.clientY) / 2;
+    zoomPanX = touchStartPanX + (curMidX - touchMidX);
+    zoomPanY = touchStartPanY + (curMidY - touchMidY);
+
+    updateZoomTransform();
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
+viewport.addEventListener('touchend', e => {
+  if (e.touches.length < 2) {
+    touchStartDist = 0;
+    isPanningCanvas = false;
+  }
+});
+
+/* ---- MOBILE BOTTOM DRAWER CONTROLS ---- */
+const btnMobileAssets = $('#btn-mobile-assets');
+const btnMobileInspector = $('#btn-mobile-inspector');
+const mobileOverlay = $('#mobile-overlay');
+const figmaSidebar = $('.figma-sidebar');
+
+function closeMobileDrawers() {
+  figmaSidebar?.classList.remove('mobile-open');
+  adjPanel?.classList.remove('mobile-open');
+  mobileOverlay?.classList.remove('active');
+  btnMobileAssets?.classList.remove('active');
+  btnMobileInspector?.classList.remove('active');
+}
+
+btnMobileAssets?.addEventListener('click', () => {
+  const isOpening = !figmaSidebar.classList.contains('mobile-open');
+  closeMobileDrawers();
+  if (isOpening) {
+    figmaSidebar.classList.add('mobile-open');
+    mobileOverlay.classList.add('active');
+    btnMobileAssets.classList.add('active');
+  }
+});
+
+btnMobileInspector?.addEventListener('click', () => {
+  const isOpening = !adjPanel.classList.contains('mobile-open');
+  closeMobileDrawers();
+  if (isOpening) {
+    adjPanel.classList.add('mobile-open');
+    mobileOverlay.classList.add('active');
+    btnMobileInspector.classList.add('active');
+  }
+});
+
+mobileOverlay?.addEventListener('click', closeMobileDrawers);
 
 /* ============================================================
    INTERNATIONALIZATION (i18n) SYSTEM — RU / EN
