@@ -368,23 +368,41 @@ function redistributeLayout() {
 function updateFrameSize() {
   const vp = viewport.getBoundingClientRect();
   const isMobile = window.innerWidth <= 768;
-  
-  // Use a large virtual viewport on mobile so that tags and borders scale beautifully
-  const availW = isMobile ? 900 : Math.max(200, vp.width - 80);
-  const availH = isMobile ? 600 : Math.max(150, vp.height - 80);
   const ratio = getRatio();
   let w, h;
-  if (availW/availH > ratio) { h = availH; w = h*ratio; }
-  else { w = availW; h = w/ratio; }
+
+  if (isMobile) {
+    // Generous high-resolution virtual canvas for mobile (1600px long edge).
+    // This provides spacious width and height so tags, text, borders, and photos scale gracefully.
+    const maxDim = 1600;
+    if (ratio <= 1.0) {
+      h = maxDim;
+      w = Math.round(h * ratio);
+    } else {
+      w = maxDim;
+      h = Math.round(w / ratio);
+    }
+  } else {
+    const availW = Math.max(300, vp.width - 80);
+    const availH = Math.max(200, vp.height - 80);
+    if (availW / availH > ratio) {
+      h = availH;
+      w = Math.round(h * ratio);
+    } else {
+      w = availW;
+      h = Math.round(w / ratio);
+    }
+  }
+
   frame.style.width = Math.round(w) + 'px';
   frame.style.height = Math.round(h) + 'px';
-  
-  // Auto zoom/pan on mobile to fit the frame into screen
+
+  // Auto zoom/pan on mobile to fit the large virtual frame seamlessly into screen
   if (isMobile) {
-    const pad = 12;
-    const fitWScale = (vp.width - pad*2) / w;
-    const fitHScale = (vp.height - pad*2) / h;
-    zoomScale = Math.round(Math.min(fitWScale, fitHScale) * 100) / 100;
+    const pad = 14;
+    const fitWScale = (vp.width - pad * 2) / w;
+    const fitHScale = (vp.height - pad * 2) / h;
+    zoomScale = Math.round(Math.min(fitWScale, fitHScale) * 1000) / 1000;
     zoomPanX = 0;
     zoomPanY = 0;
     updateZoomTransform();
@@ -445,7 +463,12 @@ function renderCollage() {
     const py = Math.round(cell.fy * fh);
     const pw = Math.round(cell.fw * fw);
     const ph = Math.round(cell.fh * fh);
-    const imgH = Math.max(10, ph - tagH);
+
+    // Adapt tag font size proportionally so it fits gracefully within card width without clipping
+    const maxTagFont = Math.min(tagSize, Math.floor(pw / 7.5));
+    const activeTagSize = Math.max(7, maxTagFont);
+    const cellTagH = tagEnabled ? Math.round(activeTagSize * 1.5 + 4) : 0;
+    const imgH = Math.max(10, ph - cellTagH);
 
     // Outer Cell container
     const div = document.createElement('div');
@@ -467,9 +490,9 @@ function renderCollage() {
       const tag = document.createElement('div');
       tag.className = 'cell-tag';
       tag.textContent = '@IMAGE' + (i + 1);
-      tag.style.fontSize = tagSize + 'px';
-      tag.style.height = tagH + 'px';
-      tag.style.lineHeight = tagH + 'px';
+      tag.style.fontSize = activeTagSize + 'px';
+      tag.style.height = cellTagH + 'px';
+      tag.style.lineHeight = cellTagH + 'px';
       tag.style.background = frameColor;
       tag.style.color = contrastColor;
       inner.appendChild(tag);
