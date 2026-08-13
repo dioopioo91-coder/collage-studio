@@ -1855,22 +1855,6 @@ const btnEditorDownload = document.getElementById('btn-editor-download');
 const btnEditorClose = document.getElementById('btn-editor-close');
 const btnEditorSave = document.getElementById('btn-editor-save');
 
-/* Helper: get whichever cell is being edited right now */
-function getActiveCell() {
-  if (isSingleEditorMode) return singleCell;
-  if (selectedIdx >= 0 && canvasCells[selectedIdx]) return canvasCells[selectedIdx];
-  return null;
-}
-
-/* Helper: re-render whichever context is active (editor preview or collage) */
-function refreshImageEffects() {
-  if (editorOverlay && !editorOverlay.hasAttribute('hidden')) {
-    renderEditorImage();
-  } else {
-    renderCollage();
-  }
-}
-
 function openFullscreenEditor(idx) {
   document.body.classList.add('in-editor-mode');
   editorOverlay.removeAttribute('hidden');
