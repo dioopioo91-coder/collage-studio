@@ -1406,8 +1406,8 @@ const figmaSidebar       = $('.figma-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
 
-const allDrawers = [figmaSidebar, adjPanel, navbarCenter, zoomControls].filter(Boolean);
-const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector, btnMobileZoom].filter(Boolean);
+const allDrawers = [figmaSidebar, adjPanel, navbarCenter].filter(Boolean);
+const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);
 
 function closeMobileDrawers() {
   allDrawers.forEach(d => { d.classList.remove('mobile-open'); d.style.transform = ''; });
@@ -1428,7 +1428,6 @@ function openMobileDrawer(drawer, tab) {
 btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
 btnMobileInspector?.addEventListener('click', () => openMobileDrawer(adjPanel, btnMobileInspector));
-btnMobileZoom?.addEventListener('click', () => openMobileDrawer(zoomControls, btnMobileZoom));
 mobileOverlay?.addEventListener('click', closeMobileDrawers);
 
 /* ---- SWIPE-TO-DISMISS DRAWERS ---- */
@@ -1541,7 +1540,9 @@ const i18n = {
     format: "ФОРМАТ",
     startDownload: "Скачать",
     done: "Готово",
-    emptyNotice: "Перетащите фото или выберите из библиотеки"
+    emptyNotice: "Перетащите фото или выберите из библиотеки",
+    layout: "МАКЕТ",
+    settings: "НАСТРОЙКИ"
   },
   en: {
     ratio: "RATIO",
@@ -1579,7 +1580,9 @@ const i18n = {
     format: "FORMAT",
     startDownload: "Start Download",
     done: "Done",
-    emptyNotice: "Drop images or click from library"
+    emptyNotice: "Drop images or click from library",
+    layout: "LAYOUT",
+    settings: "SETTINGS"
   }
 };
 
