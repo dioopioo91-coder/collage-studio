@@ -788,14 +788,15 @@ viewport.addEventListener('pointermove', e => {
 collage.addEventListener('pointermove', e => {
   if (isPanningCanvas || !interaction.active) return;
   const fw = frame.offsetWidth, fh = frame.offsetHeight;
-  const dx = e.clientX - interaction.startMouseX;
-  const dy = e.clientY - interaction.startMouseY;
+  const zs = (typeof zoomScale === 'number' && zoomScale > 0) ? zoomScale : 1;
+  const dx = (e.clientX - interaction.startMouseX) / zs;
+  const dy = (e.clientY - interaction.startMouseY) / zs;
 
-  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) interaction.didDrag = true;
+  if (Math.abs(dx * zs) > 3 || Math.abs(dy * zs) > 3) interaction.didDrag = true;
 
   if (interaction.mode === 'rb_move' || interaction.mode === 'rb_resize') {
-    const dxPct = (dx / interaction.wrapW) * 100;
-    const dyPct = (dy / interaction.wrapH) * 100;
+    const dxPct = (dx / (interaction.wrapW || 100)) * 100;
+    const dyPct = (dy / (interaction.wrapH || 100)) * 100;
     const cell = canvasCells[interaction.cellIdx];
 
     const keysToUpdate = [];
@@ -2353,12 +2354,12 @@ editorViewport?.addEventListener('pointermove', e => {
   if (idx >= 0) activePointers[idx] = e;
   const cell = getActiveCell();
 
-  // 1-FINGER REGION BOX MANIPULATION
+  // 1-FINGER REGION BOX MANIPULATION (1:1 responsive)
   if (interaction.active && cell) {
     const dx = e.clientX - interaction.startMouseX;
     const dy = e.clientY - interaction.startMouseY;
-    const dxP = (dx / (interaction.wrapW * editorScale)) * 100;
-    const dyP = (dy / (interaction.wrapH * editorScale)) * 100;
+    const dxP = (dx / interaction.wrapW) * 100;
+    const dyP = (dy / interaction.wrapH) * 100;
 
     const keys = [];
     if (cell.adj.lines && cell.adj.lines.mode === 'region') keys.push('lines');
@@ -2395,7 +2396,7 @@ editorViewport?.addEventListener('pointermove', e => {
     return;
   }
 
-  // 2-FINGERS (Touch) OR 1-Mouse Drag IMAGE PANNING & PINCH-ZOOMING
+  // 2-FINGERS (Touch) OR 1-Mouse Drag IMAGE PANNING & PINCH-ZOOMING (1:1 speed)
   if (activePointers.length === 2) {
     const p1 = activePointers[0], p2 = activePointers[1];
     const cd = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
@@ -2403,8 +2404,8 @@ editorViewport?.addEventListener('pointermove', e => {
       editorScale = Math.max(0.4, Math.min(4.0, Math.round(startScale * (cd / prevDiff) * 100) / 100));
     }
     const cmx = (p1.clientX + p2.clientX)/2, cmy = (p1.clientY + p2.clientY)/2;
-    editorPanX = startPanX + (cmx - startMidX);
-    editorPanY = startPanY + (cmy - startMidY);
+    editorPanX = startPanX + (cmx - startMidX) / editorScale;
+    editorPanY = startPanY + (cmy - startMidY) / editorScale;
     updateEditorTransform();
   } else if (activePointers.length === 1 && isPanningEditor && e.pointerType === 'mouse') {
     editorPanX = edPanInitX + (e.clientX - edPanStartX) / editorScale;
