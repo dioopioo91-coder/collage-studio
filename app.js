@@ -1024,7 +1024,6 @@ fileInput.addEventListener('change', e => {
   fileInput.value = '';
   handleFiles(files);
 });
-$('#btn-upload').addEventListener('click', () => fileInput.click());
 
 /* ---- DRAG & DROP FILES ---- */
 viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
@@ -1053,7 +1052,27 @@ bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
 bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
 bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
 bindSliderAndNum(sFrameStroke, nFrameStroke, val => { strokeWidth = val; renderCollage(); });
-sRatio.addEventListener('change', () => { updateFrameSize(); redistributeLayout(); renderCollage(); });
+$$('.ratio-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.ratio-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const val = btn.dataset.ratio;
+    if (sRatio) {
+      sRatio.value = val;
+      updateFrameSize();
+      redistributeLayout();
+      renderCollage();
+    }
+  });
+});
+
+sRatio?.addEventListener('change', () => {
+  const val = sRatio.value;
+  $$('.ratio-btn').forEach(b => b.classList.toggle('active', b.dataset.ratio === val));
+  updateFrameSize();
+  redistributeLayout();
+  renderCollage();
+});
 sFrameColor.addEventListener('input', () => { frameColor=sFrameColor.value; vFrameColor.textContent=frameColor.toUpperCase(); renderCollage(); });
 
 $('#btn-clear-canvas').addEventListener('click', () => { canvasCells=[]; selectedIdx=-1; hideInspector(); renderCollage(); });

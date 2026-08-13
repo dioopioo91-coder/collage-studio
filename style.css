@@ -30,6 +30,9 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .tool-divider{width:1px;height:18px;background:var(--border)}
 .modal-body select{background:var(--bg-app);color:var(--text-main);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;outline:none}
 
+/* RATIO BUTTON GRID (hidden on desktop, flex on mobile) */
+.ratio-btn-grid{display:none}
+
 /* DRAWER HANDLE (visible only on mobile via media query) */
 .drawer-handle{display:none}
 
@@ -86,13 +89,23 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .inspector-section[hidden].mobile-open{display:block !important}
   .inspector-section.mobile-open{padding-top:4px;max-height:42vh}
 
-  /* ========== LAYOUT DRAWER: compact, labels above sliders ========== */
-  .navbar-center{padding:4px 14px 12px;display:flex;flex-direction:column;gap:6px;max-height:45vh}
-  .navbar-center .tool-item{width:100%;flex-wrap:wrap;gap:4px 8px}
-  .navbar-center .tool-label{font-size:10px;width:100%;display:block;margin-bottom:-2px}
+  /* ========== LAYOUT DRAWER: MATCH SETTINGS FORMAT (LABEL LEFT, LONG SLIDER RIGHT) ========== */
+  .navbar-center{padding:4px 14px 12px;display:flex;flex-direction:column;gap:8px;max-height:48vh}
   .navbar-center .tool-divider{display:none}
-  .navbar-center .figma-slider{flex:1;width:100%;min-width:0}
-  .navbar-center select{height:34px;font-size:13px;padding:4px 24px 4px 10px;width:100%}
+  .desktop-only-select{display:none !important}
+  
+  .tool-item-ratio{display:flex;flex-direction:column;gap:4px;width:100%}
+  .tool-item-ratio .tool-label{font-size:10px;color:var(--text-sec);margin-bottom:2px}
+  .ratio-btn-grid{display:flex;gap:4px;overflow-x:auto;width:100%;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .ratio-btn{flex:1;min-width:44px;padding:6px 4px;font-size:11px;font-weight:700;font-family:var(--font-mono);background:var(--bg-card);color:var(--text-sec);border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;text-align:center;transition:all .15s}
+  .ratio-btn.active{background:var(--accent);color:#0f0f12;border-color:var(--accent)}
+
+  .prop-row-layout{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:8px !important;width:100% !important;flex-wrap:nowrap !important}
+  .prop-row-layout .tool-label{font-size:11px !important;width:65px !important;flex-shrink:0 !important;margin:0 !important;display:inline-block !important}
+  .prop-row-layout .tool-toggle-label{display:flex !items:center;gap:4px;width:65px;flex-shrink:0}
+  .prop-row-layout .slider-val-box{display:flex !important;align-items:center !important;gap:6px !important;flex:1 !important;min-width:0 !important}
+  .prop-row-layout .figma-slider{flex:1 !important;width:100% !important;min-width:0 !important}
+  .stroke-row{display:flex;align-items:center;gap:4px}
 
   /* ZOOM CONTROLS: Hidden on mobile — use pinch-to-zoom */
   .zoom-controls{display:none !important}
