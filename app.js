@@ -477,6 +477,9 @@ const interaction = {
 
 // Clicking empty canvas deselects and hides inspector panel!
 viewport.addEventListener('pointerdown', e => {
+  // Never intercept clicks on zoom & pan toolbar buttons!
+  if (e.target.closest('.zoom-controls')) return;
+
   // Check for canvas panning trigger (Middle click = 1, Right click = 2, Space, Hand tool)
   if (panToolActive || isSpacePressed || e.button === 1 || e.button === 2) {
     isPanningCanvas = true;
