@@ -336,6 +336,7 @@ function renderCollage() {
   const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
+    if (selectedIdx >= 0 && i !== selectedIdx) continue; // Only show the selected image when editing!
     const cell = canvasCells[i];
     if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
     if (!cell.adj.noise) cell.adj.noise = defaultAdj().noise;
@@ -346,13 +347,28 @@ function renderCollage() {
     const natW = asset.natW || 1, natH = asset.natH || 1;
     const ir = natW / natH;
 
-    const px = Math.round(cell.fx * fw);
-    const py = Math.round(cell.fy * fh);
-    const pw = Math.round(cell.fw * fw);
-    const imgH = Math.round(pw / ir);
-    const ph = tagH + imgH;
-
-    cell.fh = ph / fh;
+    let px, py, pw, ph, imgH;
+    if (selectedIdx >= 0) {
+      // Fit the selected cell inside the canvas view area
+      const canvasRatio = fw / fh;
+      if (ir > canvasRatio) {
+        pw = fw;
+        imgH = Math.round(pw / ir);
+      } else {
+        imgH = fh - tagH;
+        pw = Math.round(imgH * ir);
+      }
+      px = Math.round((fw - pw) / 2);
+      py = Math.round((fh - (tagH + imgH)) / 2);
+      ph = tagH + imgH;
+    } else {
+      px = Math.round(cell.fx * fw);
+      py = Math.round(cell.fy * fh);
+      pw = Math.round(cell.fw * fw);
+      imgH = Math.round(pw / ir);
+      ph = tagH + imgH;
+      cell.fh = ph / fh;
+    }
 
     // Outer Cell container
     const div = document.createElement('div');
@@ -535,7 +551,7 @@ viewport.addEventListener('pointerdown', e => {
   if (e.target.closest('.zoom-controls')) return;
 
   // Check for canvas panning trigger (Middle click = 1, Right click = 2, Space, Hand tool)
-  if (panToolActive || isSpacePressed || e.button === 1 || e.button === 2) {
+  if (selectedIdx < 0 && (panToolActive || isSpacePressed || e.button === 1 || e.button === 2)) {
     isPanningCanvas = true;
     panStartX = e.clientX;
     panStartY = e.clientY;
@@ -1415,6 +1431,7 @@ function updateZoomTransform() {
 }
 
 viewport.addEventListener('wheel', e => {
+  if (selectedIdx >= 0) return; // Block wheel zoom when editing an image
   e.preventDefault();
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   zoomScale = Math.max(0.4, Math.min(3.0, Math.round((zoomScale + delta) * 10) / 10));
@@ -1461,6 +1478,7 @@ let touchStartPanX = 0, touchStartPanY = 0;
 let touchMidX = 0, touchMidY = 0;
 
 viewport.addEventListener('touchstart', e => {
+  if (selectedIdx >= 0) return; // Block touch gesture zoom/pan when editing an image
   if (e.target.closest('.zoom-controls') || e.target.closest('.mobile-bottom-bar') || e.target.closest('.figma-sidebar') || e.target.closest('.inspector-section')) return;
 
   if (e.touches.length === 2) {
@@ -1478,6 +1496,7 @@ viewport.addEventListener('touchstart', e => {
 }, { passive: false });
 
 viewport.addEventListener('touchmove', e => {
+  if (selectedIdx >= 0) return; // Block touch gesture zoom/pan when editing an image
   if (e.touches.length === 2 && touchStartDist > 0) {
     const t1 = e.touches[0];
     const t2 = e.touches[1];
@@ -1521,9 +1540,16 @@ const allDrawers = [figmaSidebar, adjPanel, navbarCenter].filter(Boolean);
 const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);
 
 function closeMobileDrawers() {
+  // If inspector drawer was open, deselect so canvas becomes pannable
+  const wasInspectorOpen = adjPanel?.classList.contains('mobile-open');
   allDrawers.forEach(d => { d.classList.remove('mobile-open'); d.style.transform = ''; });
   allTabs.forEach(t => t.classList.remove('active'));
   mobileOverlay?.classList.remove('active');
+  if (wasInspectorOpen && selectedIdx >= 0) {
+    selectedIdx = -1;
+    hideInspector();
+    renderCollage();
+  }
 }
 
 function openMobileDrawer(drawer, tab) {
@@ -1539,12 +1565,18 @@ function openMobileDrawer(drawer, tab) {
 btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
 btnMobileInspector?.addEventListener('click', () => {
-  // If no photo selected, show panel anyway but remove hidden so drawer is visible
+  // Only open editor if a cell is selected
+  if (selectedIdx < 0 || selectedIdx >= canvasCells.length) {
+    // Brief visual hint: flash the button
+    btnMobileInspector.style.color = '#ff4466';
+    setTimeout(() => { btnMobileInspector.style.color = ''; }, 600);
+    return;
+  }
   if (adjPanel?.hasAttribute('hidden')) {
     adjPanel.removeAttribute('hidden');
-    // Show a placeholder state
-    adjPanel.classList.add('no-selection');
   }
+  adjPanel.classList.remove('no-selection');
+  showInspector(selectedIdx);
   openMobileDrawer(adjPanel, btnMobileInspector);
 });
 mobileOverlay?.addEventListener('click', closeMobileDrawers);
@@ -1661,7 +1693,7 @@ const i18n = {
     done: "Готово",
     emptyNotice: "Перетащите фото или выберите из библиотеки",
     layout: "МАКЕТ",
-    settings: "НАСТРОЙКИ"
+    settings: "РЕДАКТОР"
   },
   en: {
     ratio: "RATIO",
@@ -1701,7 +1733,7 @@ const i18n = {
     done: "Done",
     emptyNotice: "Drop images or click from library",
     layout: "LAYOUT",
-    settings: "SETTINGS"
+    settings: "EDITOR"
   }
 };
 
