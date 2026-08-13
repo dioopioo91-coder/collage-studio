@@ -1400,11 +1400,16 @@ viewport.addEventListener('touchend', e => {
 const btnMobileAssets    = $('#btn-mobile-assets');
 const btnMobileLayout    = $('#btn-mobile-layout');
 const btnMobileInspector = $('#btn-mobile-inspector');
-const btnMobileZoom      = $('#btn-mobile-zoom');
 const mobileOverlay      = $('#mobile-overlay');
 const figmaSidebar       = $('.figma-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
+
+/* On mobile, move inspector-section out of figma-sidebar to body level
+   so Assets drawer doesn't bleed inspector buttons (Reset/Delete) */
+if (window.innerWidth <= 768 && adjPanel && figmaSidebar) {
+  document.body.insertBefore(adjPanel, document.querySelector('.mobile-drawer-overlay'));
+}
 
 const allDrawers = [figmaSidebar, adjPanel, navbarCenter].filter(Boolean);
 const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector].filter(Boolean);
@@ -1427,7 +1432,15 @@ function openMobileDrawer(drawer, tab) {
 
 btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
 btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
-btnMobileInspector?.addEventListener('click', () => openMobileDrawer(adjPanel, btnMobileInspector));
+btnMobileInspector?.addEventListener('click', () => {
+  // If no photo selected, show panel anyway but remove hidden so drawer is visible
+  if (adjPanel?.hasAttribute('hidden')) {
+    adjPanel.removeAttribute('hidden');
+    // Show a placeholder state
+    adjPanel.classList.add('no-selection');
+  }
+  openMobileDrawer(adjPanel, btnMobileInspector);
+});
 mobileOverlay?.addEventListener('click', closeMobileDrawers);
 
 /* ---- SWIPE-TO-DISMISS DRAWERS ---- */
