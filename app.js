@@ -1148,16 +1148,6 @@ async function handleFiles(files) {
     try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
   }
   renderLibrary();
-
-  // AUTOMATICALLY add newly uploaded images directly to canvas!
-  if (newAssetIds.length > 0) {
-    for (const assetId of newAssetIds) {
-      canvasCells.push({ assetId, adj: defaultAdj(), fx: 0, fy: 0, fw: 0, fh: 0 });
-    }
-    redistributeLayout();
-    renderCollage();
-    if (typeof closeMobileDrawers === 'function') closeMobileDrawers();
-  }
 }
 
 const globalFileInput = document.getElementById('global-file-input');
