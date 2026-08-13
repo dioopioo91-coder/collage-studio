@@ -1406,59 +1406,100 @@ const figmaSidebar       = $('.figma-sidebar');
 const navbarCenter       = $('.navbar-center');
 const zoomControls       = $('.zoom-controls');
 
+const allDrawers = [figmaSidebar, adjPanel, navbarCenter, zoomControls].filter(Boolean);
+const allTabs    = [btnMobileAssets, btnMobileLayout, btnMobileInspector, btnMobileZoom].filter(Boolean);
+
 function closeMobileDrawers() {
-  figmaSidebar?.classList.remove('mobile-open');
-  adjPanel?.classList.remove('mobile-open');
-  navbarCenter?.classList.remove('mobile-open');
-  zoomControls?.classList.remove('mobile-open');
+  allDrawers.forEach(d => { d.classList.remove('mobile-open'); d.style.transform = ''; });
+  allTabs.forEach(t => t.classList.remove('active'));
   mobileOverlay?.classList.remove('active');
-  btnMobileAssets?.classList.remove('active');
-  btnMobileLayout?.classList.remove('active');
-  btnMobileInspector?.classList.remove('active');
-  btnMobileZoom?.classList.remove('active');
 }
 
-btnMobileAssets?.addEventListener('click', () => {
-  const isOpening = !figmaSidebar?.classList.contains('mobile-open');
+function openMobileDrawer(drawer, tab) {
+  const isOpening = !drawer?.classList.contains('mobile-open');
   closeMobileDrawers();
   if (isOpening) {
-    figmaSidebar?.classList.add('mobile-open');
+    drawer?.classList.add('mobile-open');
     mobileOverlay?.classList.add('active');
-    btnMobileAssets?.classList.add('active');
+    tab?.classList.add('active');
   }
-});
+}
 
-btnMobileLayout?.addEventListener('click', () => {
-  const isOpening = !navbarCenter?.classList.contains('mobile-open');
-  closeMobileDrawers();
-  if (isOpening) {
-    navbarCenter?.classList.add('mobile-open');
-    mobileOverlay?.classList.add('active');
-    btnMobileLayout?.classList.add('active');
-  }
-});
-
-btnMobileInspector?.addEventListener('click', () => {
-  const isOpening = !adjPanel?.classList.contains('mobile-open');
-  closeMobileDrawers();
-  if (isOpening) {
-    adjPanel?.classList.add('mobile-open');
-    mobileOverlay?.classList.add('active');
-    btnMobileInspector?.classList.add('active');
-  }
-});
-
-btnMobileZoom?.addEventListener('click', () => {
-  const isOpening = !zoomControls?.classList.contains('mobile-open');
-  closeMobileDrawers();
-  if (isOpening) {
-    zoomControls?.classList.add('mobile-open');
-    mobileOverlay?.classList.add('active');
-    btnMobileZoom?.classList.add('active');
-  }
-});
-
+btnMobileAssets?.addEventListener('click', () => openMobileDrawer(figmaSidebar, btnMobileAssets));
+btnMobileLayout?.addEventListener('click', () => openMobileDrawer(navbarCenter, btnMobileLayout));
+btnMobileInspector?.addEventListener('click', () => openMobileDrawer(adjPanel, btnMobileInspector));
+btnMobileZoom?.addEventListener('click', () => openMobileDrawer(zoomControls, btnMobileZoom));
 mobileOverlay?.addEventListener('click', closeMobileDrawers);
+
+/* ---- SWIPE-TO-DISMISS DRAWERS ---- */
+let swipeDrawer = null;
+let swipeStartY = 0;
+let swipeDeltaY = 0;
+
+function initSwipeDismiss(drawerEl) {
+  if (!drawerEl) return;
+  drawerEl.addEventListener('touchstart', e => {
+    // Only start swipe from the drawer-handle or top 40px of drawer
+    const handle = drawerEl.querySelector('.drawer-handle');
+    const rect = drawerEl.getBoundingClientRect();
+    const touchY = e.touches[0].clientY;
+    const isNearTop = (touchY - rect.top) < 40;
+    const isHandle = handle && e.target === handle;
+    if (!isHandle && !isNearTop) return;
+    if (!drawerEl.classList.contains('mobile-open')) return;
+    swipeDrawer = drawerEl;
+    swipeStartY = e.touches[0].clientY;
+    swipeDeltaY = 0;
+    drawerEl.style.transition = 'none';
+  }, { passive: true });
+
+  drawerEl.addEventListener('touchmove', e => {
+    if (swipeDrawer !== drawerEl) return;
+    swipeDeltaY = e.touches[0].clientY - swipeStartY;
+    if (swipeDeltaY < 0) swipeDeltaY = 0; // Only allow downward swipe
+    drawerEl.style.transform = `translateY(${swipeDeltaY}px)`;
+  }, { passive: true });
+
+  drawerEl.addEventListener('touchend', () => {
+    if (swipeDrawer !== drawerEl) return;
+    drawerEl.style.transition = '';
+    if (swipeDeltaY > 80) {
+      closeMobileDrawers();
+    } else {
+      drawerEl.style.transform = '';
+    }
+    swipeDrawer = null;
+    swipeDeltaY = 0;
+  });
+}
+
+// Initialize swipe-to-dismiss on all drawers
+allDrawers.forEach(d => initSwipeDismiss(d));
+
+/* ---- DOUBLE-TAP CANVAS FOR FULLSCREEN PREVIEW ---- */
+let lastTapTime = 0;
+const appEl = document.querySelector('.app');
+
+viewport.addEventListener('touchend', e => {
+  if (e.touches.length > 0) return; // Still has fingers down
+  // Only trigger on empty canvas area, not on cells
+  if (e.target !== viewport && e.target !== frame && e.target.id !== 'empty-state' && !e.target.closest('.empty-canvas')) return;
+  
+  const now = Date.now();
+  if (now - lastTapTime < 350) {
+    // Double-tap detected
+    appEl?.classList.toggle('fullscreen-preview');
+    lastTapTime = 0;
+  } else {
+    lastTapTime = now;
+  }
+});
+
+/* ---- MOBILE EXPORT BUTTON ---- */
+const btnExportMobile = $('#btn-export-mobile');
+btnExportMobile?.addEventListener('click', () => {
+  document.getElementById('export-modal')?.removeAttribute('hidden');
+});
 
 /* ============================================================
    INTERNATIONALIZATION (i18n) SYSTEM — RU / EN

@@ -26,6 +26,7 @@
         <span class="badge" id="canvas-info">0 images</span>
       </div>
       <div class="navbar-center">
+        <div class="drawer-handle"></div>
         <div class="tool-item">
           <span class="tool-label" data-i18n="ratio">ПРОПОРЦИИ</span>
           <select id="aspect-ratio">
@@ -72,6 +73,9 @@
         </a>
         <button class="btn btn-secondary" id="btn-clear-canvas" data-i18n="clear">Очистить</button>
         <button class="btn btn-primary" id="btn-export" data-i18n="export">Экспорт</button>
+        <button class="btn btn-primary mobile-export-btn" id="btn-export-mobile" data-i18n="export" title="Export">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
       </div>
     </header>
 
@@ -110,6 +114,7 @@
       </main>
 
       <aside class="figma-sidebar">
+        <div class="drawer-handle"></div>
         <section class="sidebar-section library-section">
           <div class="section-header">
             <div class="section-title"><span data-i18n="assets">АССЕТЫ</span> <span class="count-pill" id="lib-count">0</span></div>
@@ -129,6 +134,7 @@
         </section>
 
         <section class="sidebar-section inspector-section" id="adjustments-panel" hidden>
+          <div class="drawer-handle"></div>
           <div class="section-header border-top">
             <div class="inspector-tabs">
               <button class="tab-btn active" data-tab="tab-color" data-i18n="tabColor">Цвет</button>

@@ -30,49 +30,150 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 .tool-divider{width:1px;height:18px;background:var(--border)}
 .modal-body select{background:var(--bg-app);color:var(--text-main);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;outline:none}
 
+/* DRAWER HANDLE (visible only on mobile via media query) */
+.drawer-handle{display:none}
+
+/* MOBILE EXPORT BUTTON (hidden on desktop) */
+.mobile-export-btn{display:none !important}
+
 /* MOBILE & RESPONSIVE TOUCH STYLES */
 .mobile-bottom-bar{display:none}
-.mobile-drawer-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:900;backdrop-filter:blur(3px)}
+.mobile-drawer-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:900;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .2s}
 .mobile-drawer-overlay.active{display:block}
 
-@media (max-width: 768px) {
-  /* HEADER MOBILE */
-  .navbar{height:50px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;z-index:100}
-  .navbar-left{gap:8px}
-  .badge{display:none}
-  .btn-tg{display:none}
+/* FULLSCREEN PREVIEW MODE (double-tap canvas) */
+.app.fullscreen-preview .navbar,
+.app.fullscreen-preview .mobile-bottom-bar,
+.app.fullscreen-preview .zoom-controls{display:none !important}
+.app.fullscreen-preview .canvas-viewport{height:100vh !important;height:100dvh !important}
 
-  /* NAVBAR CENTER BECOMES MOBILE LAYOUT DRAWER */
-  .navbar-center{position:fixed;bottom:54px;left:0;right:0;width:100%;max-height:75vh;height:auto;background:var(--bg-sidebar);border-top:2px solid var(--accent);border-radius:16px 16px 0 0;padding:16px;display:flex;flex-direction:column;gap:12px;z-index:950;transform:translateY(115%);transition:transform .3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 -10px 40px rgba(0,0,0,.8);overflow-y:auto}
-  .navbar-center.mobile-open{transform:translateY(0)}
-  .navbar-center .tool-item{width:100%;justify-content:space-between}
+@media (max-width: 768px) {
+  /* ========== HEADER: Compact 44px ========== */
+  .navbar{height:44px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;z-index:100;gap:6px}
+  .navbar-left{gap:6px;flex-shrink:0}
+  .logo span{font-size:12px}
+  .badge{display:none}
+  .btn-tg{display:none !important}
+  .navbar-right #btn-clear-canvas{display:none}
+  .navbar-right #btn-export{display:none}
+  .mobile-export-btn{display:inline-flex !important;width:36px;height:36px;padding:0;border-radius:8px;flex-shrink:0}
+  .navbar-right{gap:6px}
+
+  /* ========== CANVAS VIEWPORT: Full bleed ========== */
+  .canvas-viewport{padding:8px;height:calc(100vh - 44px - 56px);height:calc(100dvh - 44px - 56px)}
+
+  /* ========== DRAWER HANDLE: iOS-style pill ========== */
+  .drawer-handle{display:block;width:36px;height:4px;background:rgba(255,255,255,.35);border-radius:4px;margin:10px auto 6px;flex-shrink:0;cursor:grab}
+  .drawer-handle:active{background:var(--accent)}
+
+  /* ========== SHARED DRAWER STYLES ========== */
+  .figma-sidebar,.inspector-section,.navbar-center{
+    position:fixed !important;bottom:56px;bottom:calc(56px + env(safe-area-inset-bottom));
+    left:0;right:0;width:100%;max-height:70vh;height:auto;
+    background:var(--bg-sidebar);z-index:950;
+    border-radius:20px 20px 0 0;
+    transform:translateY(120%);
+    transition:transform .35s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow:0 -12px 48px rgba(0,0,0,.7),0 -1px 0 var(--accent);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;touch-action:pan-y
+  }
+  .figma-sidebar.mobile-open,.inspector-section.mobile-open,.navbar-center.mobile-open{
+    transform:translateY(0)
+  }
+
+  /* NAVBAR CENTER LAYOUT DRAWER */
+  .navbar-center{padding:4px 16px 16px;display:flex;flex-direction:column;gap:14px}
+  .navbar-center .tool-item{width:100%;justify-content:space-between;gap:10px}
   .navbar-center .tool-divider{display:none}
   .navbar-center .figma-slider{flex:1;width:auto}
+  .navbar-center .tool-label{font-size:11px}
+  .navbar-center select{height:36px;font-size:13px;padding:6px 24px 6px 10px}
 
-  /* DRAWERS FOR ASSETS & INSPECTOR */
-  .studio-body{position:relative}
-  .figma-sidebar{position:fixed;bottom:54px;left:0;width:100%;max-height:75vh;height:auto;background:var(--bg-sidebar);z-index:950;border-radius:16px 16px 0 0;transform:translateY(115%);transition:transform .3s cubic-bezier(0.16, 1, 0.3, 1);box-shadow:0 -10px 40px rgba(0,0,0,.8);border-top:2px solid var(--accent);overflow-y:auto}
-  .figma-sidebar.mobile-open{transform:translateY(0)}
-
-  .inspector-section{position:fixed;bottom:54px;right:0;left:0;width:100%;max-height:75vh;height:auto;background:var(--bg-sidebar);z-index:950;border-radius:16px 16px 0 0;transform:translateY(115%);transition:transform .3s cubic-bezier(0.16, 1, 0.3, 1);box-shadow:0 -10px 40px rgba(0,0,0,.8);border-top:2px solid var(--accent);overflow-y:auto}
-  .inspector-section.mobile-open{transform:translateY(0)}
-
-  /* ZOOM CONTROLS DRAWER ON MOBILE */
-  .zoom-controls{position:fixed;bottom:54px;left:50%;transform:translate(-50%, 150%);transition:transform .3s cubic-bezier(0.16, 1, 0.3, 1);z-index:950;padding:10px 16px;gap:10px;background:var(--bg-sidebar);border:2px solid var(--accent);border-radius:12px 12px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.8)}
+  /* ZOOM CONTROLS: Floating pill above bottom bar */
+  .zoom-controls{
+    position:fixed !important;bottom:56px;bottom:calc(56px + env(safe-area-inset-bottom));
+    left:50%;transform:translate(-50%, 120%);
+    transition:transform .35s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index:950;padding:8px 14px;gap:8px;
+    background:var(--bg-sidebar);border:1px solid var(--border);
+    border-radius:14px 14px 0 0;
+    box-shadow:0 -12px 48px rgba(0,0,0,.7),0 -1px 0 var(--accent)
+  }
   .zoom-controls.mobile-open{transform:translate(-50%, 0)}
-  .zoom-controls .icon-btn{width:36px;height:36px}
-  .zoom-val{font-size:14px}
+  .zoom-controls .icon-btn{width:40px;height:40px;border-radius:8px}
+  .zoom-val{font-size:14px;min-width:48px}
 
-  /* MOBILE BOTTOM NAVIGATION BAR */
-  .mobile-bottom-bar{display:flex;position:fixed;bottom:0;left:0;width:100%;height:54px;background:var(--bg-topbar);border-top:1px solid var(--border);z-index:1000;padding:4px 8px;gap:4px;box-shadow:0 -4px 16px rgba(0,0,0,.5)}
-  .mobile-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--text-sec);font-size:10px;font-weight:700;font-family:var(--font-mono);border-radius:8px;cursor:pointer;transition:all .15s}
-  .mobile-tab-btn.active,.mobile-tab-btn:active{background:var(--accent-light);color:var(--accent)}
+  /* ========== MOBILE BOTTOM NAVIGATION ========== */
+  .mobile-bottom-bar{
+    display:flex;position:fixed;bottom:0;left:0;width:100%;
+    height:calc(56px + env(safe-area-inset-bottom));
+    padding:4px 6px;padding-bottom:calc(4px + env(safe-area-inset-bottom));
+    gap:2px;
+    background:var(--bg-topbar);
+    border-top:1px solid var(--border);
+    z-index:1000;
+    box-shadow:0 -6px 24px rgba(0,0,0,.6)
+  }
+  .mobile-tab-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;background:none;border:none;
+    color:var(--text-muted);font-size:9px;font-weight:700;
+    font-family:var(--font-mono);letter-spacing:.03em;
+    border-radius:10px;cursor:pointer;
+    transition:all .2s;position:relative;
+    -webkit-tap-highlight-color:transparent
+  }
+  .mobile-tab-btn svg{width:20px;height:20px;transition:color .2s}
+  .mobile-tab-btn.active{color:var(--accent);background:var(--accent-light)}
+  .mobile-tab-btn.active svg{color:var(--accent)}
+  .mobile-tab-btn:active{transform:scale(0.92)}
+  .mobile-tab-btn .count-pill{position:absolute;top:2px;right:calc(50% - 20px);font-size:8px;padding:0 4px;min-width:14px;height:14px;line-height:14px;text-align:center;border-radius:7px;background:var(--accent);color:#0f0f12;font-weight:800}
 
-  /* TOUCH TAP TARGET ENHANCEMENT */
-  .figma-slider{height:18px}
-  .figma-slider::-webkit-slider-thumb{width:24px;height:24px}
-  .val-num-input{width:54px;height:34px;font-size:13px}
-  .btn{min-height:38px;padding:8px 16px}
+  /* ========== TOUCH TARGET ENHANCEMENT ========== */
+  .figma-slider{height:20px}
+  .figma-slider::-webkit-slider-thumb{width:28px;height:28px}
+  .figma-slider::-moz-range-thumb{width:28px;height:28px}
+  .val-num-input{width:56px;height:38px;font-size:14px;border-radius:6px}
+  .btn{min-height:44px;padding:10px 18px;font-size:13px;border-radius:8px}
+  .btn-upload{padding:12px;font-size:13px}
+  .icon-btn{width:28px;height:28px;border-radius:6px}
+
+  /* RESIZE HANDLES - enlarged for touch */
+  .resize-handle{width:28px;height:28px;border-radius:4px;border-width:2.5px}
+  .handle-nw{top:-14px;left:-14px}
+  .handle-ne{top:-14px;right:-14px}
+  .handle-sw{bottom:-14px;left:-14px}
+  .handle-se{bottom:-14px;right:-14px}
+  .cell:hover .resize-handle,.cell.selected .resize-handle{opacity:1}
+
+  /* REGION BOX HANDLES - enlarged */
+  .region-box-handle{width:16px;height:16px}
+  .rb-nw{top:-8px;left:-8px}
+  .rb-ne{top:-8px;right:-8px}
+  .rb-sw{bottom:-8px;left:-8px}
+  .rb-se{bottom:-8px;right:-8px}
+
+  /* LIBRARY GRID - bigger cards */
+  .library-grid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .lib-card{min-height:80px}
+  .lib-del-btn{width:24px;height:24px;font-size:14px;line-height:24px;border-radius:6px;opacity:1}
+
+  /* INSPECTOR mobile tweaks */
+  .inspector-controls{padding:12px 16px 20px}
+  .prop-label{font-size:12px;width:80px}
+  .tab-btn{padding:8px 12px;font-size:12px}
+  .toggle-label{font-size:13px}
+  .toggle-label input{width:18px;height:18px}
+  .segment-btn{padding:6px 10px;font-size:11px}
+  .effect-card{padding:12px}
+
+  /* EXPORT MODAL mobile */
+  .figma-modal{width:calc(100% - 24px);margin:12px;border-radius:16px}
+  .modal-overlay{align-items:center;justify-content:center}
+
+  /* Hide desktop zoom controls bar from canvas on mobile (it's a drawer now) */
+  .studio-body{position:relative}
 }
 
 .navbar-center select{background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:5px;padding:3px 20px 3px 8px;font-size:12px;font-weight:600;font-family:var(--font-sans);outline:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
