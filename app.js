@@ -97,63 +97,62 @@ function getRatio() {
   return v[0] / v[1];
 }
 
-/* ---- AUTO LAYOUT ---- */
-function computeLayout(n) {
-  if (n === 0) return [];
-  if (n === 1) return [{ x:0, y:0, w:1, h:1 }];
-  if (n === 2) return [{ x:0,y:0,w:.5,h:1 },{ x:.5,y:0,w:.5,h:1 }];
-  if (n === 3) return [{ x:0,y:0,w:.5,h:1 },{ x:.5,y:0,w:.5,h:.5 },{ x:.5,y:.5,w:.5,h:.5 }];
-  if (n === 4) return [{ x:0,y:0,w:.5,h:.5 },{ x:.5,y:0,w:.5,h:.5 },{ x:0,y:.5,w:.5,h:.5 },{ x:.5,y:.5,w:.5,h:.5 }];
-  if (n === 5) return [{ x:0,y:0,w:1/3,h:.5 },{ x:1/3,y:0,w:1/3,h:.5 },{ x:2/3,y:0,w:1/3,h:.5 },{ x:0,y:.5,w:.5,h:.5 },{ x:.5,y:.5,w:.5,h:.5 }];
-  if (n === 6) return [{ x:0,y:0,w:1/3,h:.5 },{ x:1/3,y:0,w:1/3,h:.5 },{ x:2/3,y:0,w:1/3,h:.5 },{ x:0,y:.5,w:1/3,h:.5 },{ x:1/3,y:.5,w:1/3,h:.5 },{ x:2/3,y:.5,w:1/3,h:.5 }];
-  const cols = Math.ceil(Math.sqrt(n));
-  const rows = Math.ceil(n / cols);
-  const rects = [];
-  for (let i = 0; i < n; i++) {
-    const c = i % cols, r = Math.floor(i / cols);
-    const itemsInRow = (r === rows-1) ? (n - r*cols) : cols;
-    const cw = 1/itemsInRow, ch = 1/rows;
-    const ox = (r===rows-1 && itemsInRow<cols) ? (1-itemsInRow*cw)/2 : 0;
-    rects.push({ x: ox+c*cw, y: r*ch, w: cw, h: ch });
-  }
-  return rects;
-}
-
+/* ---- AUTO LEGO LAYOUT ---- */
 function redistributeLayout() {
   const n = canvasCells.length;
   if (n === 0) return;
-  const rects = computeLayout(n);
+
   const fw = frame.offsetWidth || 1000;
   const fh = frame.offsetHeight || 800;
+  const ratio = getRatio();
   const tagH = Math.round(tagSize * 1.6 + 6);
 
-  for (let i = 0; i < n; i++) {
-    const cell = canvasCells[i];
-    const asset = library.find(a => a.id === cell.assetId);
-    const ir = asset ? (asset.natW / asset.natH) : 1;
-    const r = rects[i];
+  // Determine optimal columns count per row based on aspect ratio
+  let cols;
+  if (ratio < 0.75) {
+    // Vertical (9:16 portrait)
+    cols = n === 1 ? 1 : 2;
+  } else if (ratio < 1.1) {
+    // Square / 4:3
+    cols = n <= 2 ? n : (n <= 4 ? 2 : 3);
+  } else {
+    // Landscape (16:9, 21:9)
+    cols = n <= 3 ? n : (n <= 6 ? 3 : 4);
+  }
 
-    const maxPw = r.w * fw - gap;
-    const maxPh = r.h * fh - gap;
-    const maxImgH = maxPh - tagH;
+  // Pack items like Lego blocks starting from top-left (gap, gap)
+  let currentYPx = gap;
 
-    let pw, imgH, ph;
-    if (maxPw / maxImgH > ir) {
-      imgH = Math.max(20, maxImgH);
-      pw = Math.max(40, imgH * ir);
-    } else {
-      pw = Math.max(40, maxPw);
-      imgH = Math.max(20, pw / ir);
+  for (let startIdx = 0; startIdx < n; startIdx += cols) {
+    const rowCells = canvasCells.slice(startIdx, startIdx + cols);
+    const countInRow = rowCells.length;
+
+    // Calculate card width for this row
+    const itemWPx = Math.max(40, (fw - (cols + 1) * gap) / cols);
+    let maxRowHPx = 0;
+    const itemHeightsPx = [];
+
+    for (let j = 0; j < countInRow; j++) {
+      const cell = rowCells[j];
+      const asset = library.find(a => a.id === cell.assetId);
+      const ir = asset ? (asset.natW / asset.natH) : 1;
+      const imgH = itemWPx / ir;
+      const ph = tagH + imgH;
+      itemHeightsPx.push(ph);
+      if (ph > maxRowHPx) maxRowHPx = ph;
     }
-    ph = tagH + imgH;
 
-    const ox = r.x * fw + (r.w * fw - pw) / 2;
-    const oy = r.y * fh + (r.h * fh - ph) / 2;
+    for (let j = 0; j < countInRow; j++) {
+      const cell = rowCells[j];
+      const oxPx = gap + j * (itemWPx + gap);
 
-    cell.fx = Math.max(0, ox / fw);
-    cell.fy = Math.max(0, oy / fh);
-    cell.fw = Math.min(1, pw / fw);
-    cell.fh = Math.min(1, ph / fh);
+      cell.fx = Math.max(0, oxPx / fw);
+      cell.fy = Math.max(0, currentYPx / fh);
+      cell.fw = Math.min(1, itemWPx / fw);
+      cell.fh = Math.min(1, itemHeightsPx[j] / fh);
+    }
+
+    currentYPx += maxRowHPx + gap;
   }
 }
 
@@ -594,7 +593,7 @@ bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
 bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
 bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
 bindSliderAndNum(sFrameStroke, nFrameStroke, val => { strokeWidth = val; renderCollage(); });
-sRatio.addEventListener('change', () => { updateFrameSize(); renderCollage(); });
+sRatio.addEventListener('change', () => { updateFrameSize(); redistributeLayout(); renderCollage(); });
 sFrameColor.addEventListener('input', () => { frameColor=sFrameColor.value; vFrameColor.textContent=frameColor.toUpperCase(); renderCollage(); });
 
 $('#btn-clear-canvas').addEventListener('click', () => { canvasCells=[]; selectedIdx=-1; hideInspector(); renderCollage(); });
