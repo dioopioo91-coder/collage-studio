@@ -91,14 +91,33 @@ function generateNoiseDataUrl(amount) {
   return canvas.toDataURL();
 }
 
-function buildLinesStyle(lines) {
-  const angle = lines.angle || 0;
-  const spacing = lines.spacing || 30;
-  const size = lines.size || 2;
-  const color = lines.color || '#ffff00';
-  const opacity = (lines.opacity !== undefined ? lines.opacity : 80) / 100;
-  const bg = `repeating-linear-gradient(${angle}deg, ${color} 0px, ${color} ${size}px, transparent ${size}px, transparent ${spacing}px)`;
-  return { bg, opacity };
+function drawLinesOnCanvas(canvas, linesObj, width, height) {
+  const w = Math.max(10, Math.round(width));
+  const h = Math.max(10, Math.round(height));
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.strokeStyle = linesObj.color || '#ffff00';
+  ctx.lineWidth = Math.max(1, linesObj.size || 2);
+  ctx.globalAlpha = (linesObj.opacity !== undefined ? linesObj.opacity : 80) / 100;
+
+  const angleRad = ((linesObj.angle || 0) * Math.PI) / 180;
+  const step = Math.max(2, linesObj.spacing || 30);
+  const diag = Math.sqrt(w * w + h * h) * 2;
+
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(angleRad);
+
+  for (let offset = -diag; offset < diag; offset += step) {
+    ctx.beginPath();
+    ctx.moveTo(offset, -diag);
+    ctx.lineTo(offset, diag);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /* ---- DOM ---- */
@@ -310,24 +329,30 @@ function renderCollage() {
     if (filterVal) img.style.filter = filterVal;
     imgWrap.appendChild(img);
 
-    // Lines Overlay
+    // Lines Overlay Canvas
     if (cell.adj.lines && cell.adj.lines.enabled) {
       const linesObj = cell.adj.lines;
-      const linesDiv = document.createElement('div');
-      linesDiv.className = 'cell-lines-overlay';
-      const { bg, opacity } = buildLinesStyle(linesObj);
-      linesDiv.style.background = bg;
-      linesDiv.style.opacity = opacity;
+      const lCanvas = document.createElement('canvas');
+      lCanvas.className = 'cell-lines-overlay';
+      lCanvas.style.position = 'absolute';
+      lCanvas.style.pointerEvents = 'none';
+      lCanvas.style.zIndex = '4';
 
+      let boxW = pw, boxH = imgH;
       if (linesObj.mode === 'region' && linesObj.box) {
-        linesDiv.style.left = linesObj.box.x + '%';
-        linesDiv.style.top = linesObj.box.y + '%';
-        linesDiv.style.width = linesObj.box.w + '%';
-        linesDiv.style.height = linesObj.box.h + '%';
+        boxW = Math.round((linesObj.box.w / 100) * pw);
+        boxH = Math.round((linesObj.box.h / 100) * imgH);
+        lCanvas.style.left = linesObj.box.x + '%';
+        lCanvas.style.top = linesObj.box.y + '%';
+        lCanvas.style.width = linesObj.box.w + '%';
+        lCanvas.style.height = linesObj.box.h + '%';
       } else {
-        linesDiv.style.left = '0'; linesDiv.style.top = '0'; linesDiv.style.width = '100%'; linesDiv.style.height = '100%';
+        lCanvas.style.left = '0'; lCanvas.style.top = '0';
+        lCanvas.style.width = '100%'; lCanvas.style.height = '100%';
       }
-      imgWrap.appendChild(linesDiv);
+
+      drawLinesOnCanvas(lCanvas, linesObj, boxW, boxH);
+      imgWrap.appendChild(lCanvas);
     }
 
     // Noise Overlay
@@ -739,6 +764,19 @@ for (const key of Object.keys(adjSliders)) {
   });
 }
 
+// Auto-enable helpers
+function autoEnableLines() {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.lines.enabled = true;
+  $('#lines-enable').checked = true;
+}
+
+function autoEnableNoise() {
+  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  canvasCells[selectedIdx].adj.noise.enabled = true;
+  $('#noise-enable').checked = true;
+}
+
 // Lines Effect Listeners
 $('#lines-enable').addEventListener('change', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
@@ -747,31 +785,37 @@ $('#lines-enable').addEventListener('change', e => {
 });
 $('#lines-mode').addEventListener('change', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   canvasCells[selectedIdx].adj.lines.mode = e.target.value;
   renderCollage();
 });
 bindSliderAndNum($('#lines-angle'), $('#lines-angle-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   canvasCells[selectedIdx].adj.lines.angle = val;
   renderCollage();
 });
 bindSliderAndNum($('#lines-spacing'), $('#lines-spacing-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   canvasCells[selectedIdx].adj.lines.spacing = val;
   renderCollage();
 });
 bindSliderAndNum($('#lines-size'), $('#lines-size-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   canvasCells[selectedIdx].adj.lines.size = val;
   renderCollage();
 });
 bindSliderAndNum($('#lines-opacity'), $('#lines-opacity-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   canvasCells[selectedIdx].adj.lines.opacity = val;
   renderCollage();
 });
 $('#lines-color').addEventListener('input', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableLines();
   const hex = e.target.value;
   canvasCells[selectedIdx].adj.lines.color = hex;
   $('#lines-color-hex').textContent = hex.toUpperCase();
@@ -786,11 +830,13 @@ $('#noise-enable').addEventListener('change', e => {
 });
 $('#noise-mode').addEventListener('change', e => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableNoise();
   canvasCells[selectedIdx].adj.noise.mode = e.target.value;
   renderCollage();
 });
 bindSliderAndNum($('#noise-amount'), $('#noise-amount-num'), val => {
   if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
+  autoEnableNoise();
   canvasCells[selectedIdx].adj.noise.amount = val;
   renderCollage();
 });
