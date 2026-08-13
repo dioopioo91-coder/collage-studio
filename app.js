@@ -145,11 +145,12 @@ function generateNoiseDataUrl(amount) {
   const ctx = canvas.getContext('2d');
   const imgData = ctx.createImageData(128, 128);
   const data = imgData.data;
-  const alpha = (amount / 100) * 255;
+  // 100% amount => alpha 255 => image completely hidden by static noise
+  const alpha = Math.round((amount / 100) * 255);
   for (let i = 0; i < data.length; i += 4) {
     const v = Math.random() * 255;
     data[i] = v; data[i+1] = v; data[i+2] = v;
-    data[i+3] = Math.random() < 0.5 ? alpha * 0.8 : alpha * 0.3;
+    data[i+3] = alpha;
   }
   ctx.putImageData(imgData, 0, 0);
   return canvas.toDataURL();
@@ -162,6 +163,7 @@ function drawLinesOnCanvas(canvas, linesObj, width, height) {
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = false;
 
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
@@ -945,8 +947,8 @@ function hideInspector() { adjPanel.hidden = true; }
 
 // Direct Segmented Mode Handler (Exposed globally for onclick)
 window.setEffectMode = function(effectKey, mode) {
-  if (selectedIdx < 0 || !canvasCells[selectedIdx]) return;
-  const cell = canvasCells[selectedIdx];
+  const cell = getActiveCell();
+  if (!cell) return;
 
   if (effectKey === 'lines') {
     if (!cell.adj.lines) cell.adj.lines = defaultAdj().lines;
@@ -960,8 +962,8 @@ window.setEffectMode = function(effectKey, mode) {
     $('#noise-enable').checked = true;
   }
 
-  showInspector(selectedIdx);
-  renderCollage();
+  showInspector(isSingleEditorMode ? -1 : selectedIdx);
+  refreshImageEffects();
 };
 
 // Inspector Tabs Switcher
@@ -1730,7 +1732,11 @@ const i18n = {
     done: "Готово",
     emptyNotice: "Перетащите фото или выберите из библиотеки",
     layout: "МАКЕТ",
-    settings: "НАСТРОЙКИ"
+    settings: "НАСТРОЙКИ",
+    editor: "РЕДАКТОР",
+    modeSelect: "Фото",
+    modePan: "Холст",
+    uploadPhoto: "Выбрать фото"
   },
   en: {
     ratio: "RATIO",
@@ -1770,7 +1776,11 @@ const i18n = {
     done: "Done",
     emptyNotice: "Drop images or click from library",
     layout: "LAYOUT",
-    settings: "SETTINGS"
+    settings: "SETTINGS",
+    editor: "EDITOR",
+    modeSelect: "Photo",
+    modePan: "Canvas",
+    uploadPhoto: "Upload Photo"
   }
 };
 
@@ -1824,8 +1834,10 @@ $$('.lang-btn').forEach(btn => {
 
 
 
+
+
 /* ============================================================
-   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style + Single Edit)
+   FULLSCREEN PHOTO EDITOR LOGIC (Picsart Style + Single Edit + Session Sync)
    ============================================================ */
 let editorScale = 1.0;
 let editorPanX = 0;
@@ -1837,25 +1849,65 @@ const editorWrapper = document.getElementById('editor-canvas-wrapper');
 const editorImgContainer = document.getElementById('editor-image-container');
 const editorUploadBtn = document.getElementById('editor-upload-btn');
 const editorFileInput = document.getElementById('editor-file-input');
+const btnEditorChangePhoto = document.getElementById('btn-editor-change-photo');
+const btnEditorDownload = document.getElementById('btn-editor-download');
 
 const btnEditorClose = document.getElementById('btn-editor-close');
 const btnEditorSave = document.getElementById('btn-editor-save');
 
+/* Helper: get whichever cell is being edited right now */
+function getActiveCell() {
+  if (isSingleEditorMode) return singleCell;
+  if (selectedIdx >= 0 && canvasCells[selectedIdx]) return canvasCells[selectedIdx];
+  return null;
+}
+
+/* Helper: re-render whichever context is active (editor preview or collage) */
+function refreshImageEffects() {
+  if (editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+    renderEditorImage();
+  } else {
+    renderCollage();
+  }
+}
+
 function openFullscreenEditor(idx) {
-  selectedIdx = idx;
   document.body.classList.add('in-editor-mode');
   editorOverlay.removeAttribute('hidden');
-  
+
   if (idx === -1) {
     isSingleEditorMode = true;
-    singleCell = null;
-    if (editorUploadBtn) editorUploadBtn.removeAttribute('hidden');
-    if (editorImgContainer) editorImgContainer.innerHTML = '';
-    hideInspector();
+    selectedIdx = -1;
+    // Session persistence: if singleCell already loaded, show it
+    if (singleCell) {
+      if (editorUploadBtn) editorUploadBtn.setAttribute('hidden', 'true');
+      if (btnEditorChangePhoto) {
+        btnEditorChangePhoto.style.display = 'flex';
+        btnEditorChangePhoto.removeAttribute('hidden');
+      }
+      showInspector(-1);
+      if (adjPanel) {
+        adjPanel.removeAttribute('hidden');
+        adjPanel.classList.remove('no-selection');
+      }
+      renderEditorImage();
+    } else {
+      if (editorUploadBtn) editorUploadBtn.removeAttribute('hidden');
+      if (btnEditorChangePhoto) {
+        btnEditorChangePhoto.style.display = 'none';
+        btnEditorChangePhoto.setAttribute('hidden', 'true');
+      }
+      if (editorImgContainer) editorImgContainer.innerHTML = '';
+      hideInspector();
+    }
   } else {
     isSingleEditorMode = false;
-    singleCell = null;
+    selectedIdx = idx;
     if (editorUploadBtn) editorUploadBtn.setAttribute('hidden', 'true');
+    if (btnEditorChangePhoto) {
+      btnEditorChangePhoto.style.display = 'none';
+      btnEditorChangePhoto.setAttribute('hidden', 'true');
+    }
     showInspector(idx);
     if (adjPanel) {
       adjPanel.removeAttribute('hidden');
@@ -1863,8 +1915,7 @@ function openFullscreenEditor(idx) {
     }
     renderEditorImage();
   }
-  
-  // Reset zoom & pan in editor
+
   editorScale = 1.0;
   editorPanX = 0;
   editorPanY = 0;
@@ -1872,24 +1923,39 @@ function openFullscreenEditor(idx) {
 }
 
 async function closeFullscreenEditor(saveClicked) {
-  if (isSingleEditorMode && saveClicked && singleCell) {
-    // Export single photo in its original quality
-    await exportSingleImage(singleCell);
+  if (isSingleEditorMode) {
+    if (saveClicked && singleCell) {
+      await exportSingleImage(singleCell);
+      singleCell = null;
+      isSingleEditorMode = false;
+    }
+    // On X (cancel): keep singleCell in memory for session persistence
+  } else {
+    // Collage mode — just close
   }
-  
   document.body.classList.remove('in-editor-mode');
   editorOverlay.setAttribute('hidden', 'true');
   hideInspector();
   selectedIdx = -1;
-  isSingleEditorMode = false;
-  singleCell = null;
   renderCollage();
 }
 
 btnEditorClose?.addEventListener('click', () => closeFullscreenEditor(false));
 btnEditorSave?.addEventListener('click', () => closeFullscreenEditor(true));
 
-// File picker listener inside the single editor
+// Download button — export in original quality without closing editor
+btnEditorDownload?.addEventListener('click', async () => {
+  const cell = getActiveCell();
+  if (!cell) return;
+  btnEditorDownload.style.opacity = '0.5';
+  btnEditorDownload.style.pointerEvents = 'none';
+  try { await exportSingleImage(cell); } finally {
+    btnEditorDownload.style.opacity = '1';
+    btnEditorDownload.style.pointerEvents = '';
+  }
+});
+
+// File picker inside single editor
 editorFileInput?.addEventListener('change', async e => {
   const file = e.target.files[0];
   editorFileInput.value = '';
@@ -1898,15 +1964,18 @@ editorFileInput?.addEventListener('change', async e => {
   const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   const thumbUrl = URL.createObjectURL(file);
   const dims = await getImageDims(thumbUrl);
-  
+
   const asset = { id, blob: file, thumbUrl, natW: dims.w, natH: dims.h };
   library.push(asset);
   renderLibrary();
-  try { await dbPut({ id, blob: file }); } catch(err) { console.warn('DB save failed:', err); }
+  try { await dbPut({ id, blob: file }); } catch(err) { console.warn('DB save:', err); }
 
   singleCell = { assetId: id, adj: defaultAdj() };
   if (editorUploadBtn) editorUploadBtn.setAttribute('hidden', 'true');
-  
+  if (btnEditorChangePhoto) {
+    btnEditorChangePhoto.style.display = 'flex';
+    btnEditorChangePhoto.removeAttribute('hidden');
+  }
   showInspector(-1);
   if (adjPanel) {
     adjPanel.removeAttribute('hidden');
@@ -1931,24 +2000,21 @@ function renderEditorImage() {
   const asset = library.find(a => a.id === cell.assetId);
   if (!asset) return;
 
-  const viewportW = editorViewport.offsetWidth || window.innerWidth;
-  const viewportH = (editorViewport.offsetHeight || window.innerHeight) * 0.6; // account for adjustments height
-
+  const vpW = editorViewport.offsetWidth || window.innerWidth;
+  const vpH = (editorViewport.offsetHeight || window.innerHeight) * 0.6;
   const natW = asset.natW || 1, natH = asset.natH || 1;
   const ir = natW / natH;
 
   const activeTagSize = Math.max(8, Math.round(tagSize * 0.6));
-  // No tag header on single editor mode!
   const tagH = (tagEnabled && !isSingleEditorMode) ? Math.round(activeTagSize * 1.5 + 4) : 0;
   const contrastColor = getContrastColor(frameColor);
 
   let pw, ph, imgH;
-  const viewRatio = viewportW / viewportH;
-  if (ir > viewRatio) {
-    pw = viewportW - 48; // padding
+  if (ir > vpW / vpH) {
+    pw = vpW - 48;
     imgH = Math.round(pw / ir);
   } else {
-    imgH = viewportH - tagH - 48;
+    imgH = vpH - tagH - 48;
     pw = Math.round(imgH * ir);
   }
   ph = tagH + imgH;
@@ -1958,7 +2024,8 @@ function renderEditorImage() {
   inner.style.width = pw + 'px';
   inner.style.height = ph + 'px';
   inner.style.borderRadius = isSingleEditorMode ? '0px' : (radius + 'px');
-  inner.style.border = (strokeEnabled && strokeWidth > 0 && !isSingleEditorMode) ? (strokeWidth + 'px solid ' + frameColor) : 'none';
+  inner.style.border = (strokeEnabled && strokeWidth > 0 && !isSingleEditorMode)
+    ? (strokeWidth + 'px solid ' + frameColor) : 'none';
 
   if (tagEnabled && !isSingleEditorMode) {
     const tag = document.createElement('div');
@@ -1976,89 +2043,69 @@ function renderEditorImage() {
   imgWrap.className = 'cell-img-wrapper';
   imgWrap.style.height = imgH + 'px';
 
-  // Strict container inside editor (shares same scaling logic)
   const imgContainer = document.createElement('div');
   imgContainer.className = 'cell-img-container';
   imgContainer.style.position = 'absolute';
-  imgContainer.style.left = '0px';
-  imgContainer.style.top = '0px';
-  imgContainer.style.width = pw + 'px';
-  imgContainer.style.height = imgH + 'px';
+  imgContainer.style.left = '0'; imgContainer.style.top = '0';
+  imgContainer.style.width = pw + 'px'; imgContainer.style.height = imgH + 'px';
 
   const img = document.createElement('img');
   img.className = 'cell-img';
   img.src = asset.thumbUrl;
   img.draggable = false;
-  img.style.width = '100%';
-  img.style.height = '100%';
+  img.style.width = '100%'; img.style.height = '100%';
   const filterVal = buildSVGFilter(cell, isSingleEditorMode ? 9999 : selectedIdx);
   if (filterVal) img.style.filter = filterVal;
   imgContainer.appendChild(img);
 
-  // Lines
+  // Lines overlay
   if (cell.adj.lines && cell.adj.lines.enabled) {
-    const linesObj = cell.adj.lines;
-    const lCanvas = document.createElement('canvas');
-    lCanvas.className = 'cell-lines-overlay';
-    lCanvas.style.position = 'absolute';
-    lCanvas.style.pointerEvents = 'none';
-    lCanvas.style.zIndex = '4';
-
-    let boxW = pw, boxH = imgH;
-    if (linesObj.mode === 'region' && linesObj.box) {
-      boxW = Math.round((linesObj.box.w / 100) * pw);
-      boxH = Math.round((linesObj.box.h / 100) * imgH);
-      lCanvas.style.left = linesObj.box.x + '%';
-      lCanvas.style.top = linesObj.box.y + '%';
-      lCanvas.style.width = linesObj.box.w + '%';
-      lCanvas.style.height = linesObj.box.h + '%';
+    const lo = cell.adj.lines;
+    const lc = document.createElement('canvas');
+    lc.className = 'cell-lines-overlay';
+    lc.style.position = 'absolute'; lc.style.pointerEvents = 'none'; lc.style.zIndex = '4';
+    let bw = pw, bh = imgH;
+    if (lo.mode === 'region' && lo.box) {
+      bw = Math.round((lo.box.w / 100) * pw);
+      bh = Math.round((lo.box.h / 100) * imgH);
+      lc.style.left = lo.box.x + '%'; lc.style.top = lo.box.y + '%';
+      lc.style.width = lo.box.w + '%'; lc.style.height = lo.box.h + '%';
     } else {
-      lCanvas.style.left = '0'; lCanvas.style.top = '0';
-      lCanvas.style.width = '100%'; lCanvas.style.height = '100%';
+      lc.style.left = '0'; lc.style.top = '0'; lc.style.width = '100%'; lc.style.height = '100%';
     }
-
-    drawLinesOnCanvas(lCanvas, linesObj, boxW, boxH);
-    imgContainer.appendChild(lCanvas);
+    drawLinesOnCanvas(lc, lo, bw, bh);
+    imgContainer.appendChild(lc);
   }
 
-  // Noise
+  // Noise overlay
   if (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.amount > 0) {
-    const noiseObj = cell.adj.noise;
-    const noiseDiv = document.createElement('div');
-    noiseDiv.className = 'cell-noise-overlay';
-    noiseDiv.style.backgroundImage = `url(${generateNoiseDataUrl(noiseObj.amount)})`;
-
-    if (noiseObj.mode === 'region' && noiseObj.box) {
-      noiseDiv.style.left = noiseObj.box.x + '%';
-      noiseDiv.style.top = noiseObj.box.y + '%';
-      noiseDiv.style.width = noiseObj.box.w + '%';
-      noiseDiv.style.height = noiseObj.box.h + '%';
+    const no = cell.adj.noise;
+    const nd = document.createElement('div');
+    nd.className = 'cell-noise-overlay';
+    nd.style.backgroundImage = `url(${generateNoiseDataUrl(no.amount)})`;
+    if (no.mode === 'region' && no.box) {
+      nd.style.left = no.box.x + '%'; nd.style.top = no.box.y + '%';
+      nd.style.width = no.box.w + '%'; nd.style.height = no.box.h + '%';
     } else {
-      noiseDiv.style.left = '0'; noiseDiv.style.top = '0'; noiseDiv.style.width = '100%'; noiseDiv.style.height = '100%';
+      nd.style.left = '0'; nd.style.top = '0'; nd.style.width = '100%'; nd.style.height = '100%';
     }
-    imgContainer.appendChild(noiseDiv);
+    imgContainer.appendChild(nd);
   }
 
-  // Region box selection
-  const isLinesRegion = (cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region');
-  const isNoiseRegion = (cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region');
-  const activeEffectKey = isLinesRegion ? 'lines' : (isNoiseRegion ? 'noise' : null);
-
-  if (activeEffectKey) {
-    const box = cell.adj[activeEffectKey].box || { x:10, y:10, w:80, h:80 };
+  // Region selection box
+  const isLR = cell.adj.lines && cell.adj.lines.enabled && cell.adj.lines.mode === 'region';
+  const isNR = cell.adj.noise && cell.adj.noise.enabled && cell.adj.noise.mode === 'region';
+  const ek = isLR ? 'lines' : (isNR ? 'noise' : null);
+  if (ek) {
+    const box = cell.adj[ek].box || { x:10, y:10, w:80, h:80 };
     const rb = document.createElement('div');
-    rb.className = 'region-box';
-    rb.dataset.effectKey = activeEffectKey;
-    rb.style.left = box.x + '%';
-    rb.style.top = box.y + '%';
-    rb.style.width = box.w + '%';
-    rb.style.height = box.h + '%';
-
-    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
-      const h = document.createElement('div');
-      h.className = `region-box-handle rb-${pos}`;
-      h.dataset.rbHandle = pos;
-      rb.appendChild(h);
+    rb.className = 'region-box'; rb.dataset.effectKey = ek;
+    rb.style.left = box.x + '%'; rb.style.top = box.y + '%';
+    rb.style.width = box.w + '%'; rb.style.height = box.h + '%';
+    ['nw','ne','sw','se'].forEach(pos => {
+      const hd = document.createElement('div');
+      hd.className = `region-box-handle rb-${pos}`; hd.dataset.rbHandle = pos;
+      rb.appendChild(hd);
     });
     imgContainer.appendChild(rb);
   }
@@ -2068,179 +2115,143 @@ function renderEditorImage() {
   editorImgContainer.appendChild(inner);
 }
 
-// Export single edited photo in high resolution (Original Quality)
+// High-res export for a single cell
 async function exportSingleImage(cell) {
   const asset = library.find(a => a.id === cell.assetId);
   if (!asset) return;
 
-  // Create temporary image to obtain clean natural resolution
   const img = new Image();
   img.src = asset.thumbUrl;
-  await new Promise(resolve => { img.onload = resolve; });
+  await new Promise(r => { img.onload = r; if (img.complete) r(); });
 
   const w = img.naturalWidth || asset.natW || img.width;
   const h = img.naturalHeight || asset.natH || img.height;
-
   const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
 
-  // SVG color adjustments filter string creation
-  const filterId = 'export-single-filter';
-  let filterDef = document.getElementById(filterId);
-  if (filterDef) filterDef.remove();
-
+  // Color adjustments via SVG filter
+  const fId = 'export-single-filter';
+  let oldF = document.getElementById(fId); if (oldF) oldF.remove();
   const adj = cell.adj;
-  const b=adj.brightness/100, c=adj.contrast/100, rM=adj.r/100, gM=adj.g/100, bM=adj.b/100;
-  const cOff = (1-c)*0.5;
+  const b = adj.brightness/100, c = adj.contrast/100;
+  const rM = adj.r/100, gM = adj.g/100, bM = adj.b/100;
+  const cOff = (1 - c) * 0.5;
   const filter = document.createElementNS('http://www.w3.org/2000/svg','filter');
-  filter.id = filterId;
+  filter.id = fId;
   filter.innerHTML = `<feColorMatrix type="matrix" values="${(rM*c*b).toFixed(3)} 0 0 0 ${cOff.toFixed(3)} 0 ${(gM*c*b).toFixed(3)} 0 0 ${cOff.toFixed(3)} 0 0 ${(bM*c*b).toFixed(3)} 0 ${cOff.toFixed(3)} 0 0 0 1 0"/>`;
   document.querySelector('#svg-filters defs').appendChild(filter);
 
-  // Draw filtered image
-  ctx.filter = `url(#${filterId})`;
+  ctx.filter = `url(#${fId})`;
   ctx.drawImage(img, 0, 0, w, h);
   ctx.filter = 'none';
 
-  // Apply Lines overlay
+  // Lines
   if (adj.lines && adj.lines.enabled) {
-    let boxW = w, boxH = h;
-    let offsetX = 0, offsetY = 0;
+    let bw = w, bh = h, ox = 0, oy = 0;
     if (adj.lines.mode === 'region' && adj.lines.box) {
-      boxW = Math.round((adj.lines.box.w / 100) * w);
-      boxH = Math.round((adj.lines.box.h / 100) * h);
-      offsetX = Math.round((adj.lines.box.x / 100) * w);
-      offsetY = Math.round((adj.lines.box.y / 100) * h);
+      bw = Math.round((adj.lines.box.w/100)*w);
+      bh = Math.round((adj.lines.box.h/100)*h);
+      ox = Math.round((adj.lines.box.x/100)*w);
+      oy = Math.round((adj.lines.box.y/100)*h);
     }
-    const lCanvas = document.createElement('canvas');
-    drawLinesOnCanvas(lCanvas, adj.lines, boxW, boxH);
-    ctx.drawImage(lCanvas, offsetX, offsetY, boxW, boxH);
+    const lc = document.createElement('canvas');
+    drawLinesOnCanvas(lc, adj.lines, bw, bh);
+    ctx.drawImage(lc, ox, oy, bw, bh);
   }
 
-  // Apply Noise overlay
+  // Noise
   if (adj.noise && adj.noise.enabled && adj.noise.amount > 0) {
-    let boxW = w, boxH = h;
-    let offsetX = 0, offsetY = 0;
+    let bw = w, bh = h, ox = 0, oy = 0;
     if (adj.noise.mode === 'region' && adj.noise.box) {
-      boxW = Math.round((adj.noise.box.w / 100) * w);
-      boxH = Math.round((adj.noise.box.h / 100) * h);
-      offsetX = Math.round((adj.noise.box.x / 100) * w);
-      offsetY = Math.round((adj.noise.box.y / 100) * h);
+      bw = Math.round((adj.noise.box.w/100)*w);
+      bh = Math.round((adj.noise.box.h/100)*h);
+      ox = Math.round((adj.noise.box.x/100)*w);
+      oy = Math.round((adj.noise.box.y/100)*h);
     }
-
-    const noiseImg = new Image();
-    noiseImg.src = generateNoiseDataUrl(adj.noise.amount);
-    await new Promise(resolve => {
-      noiseImg.onload = () => resolve();
-      if (noiseImg.complete) resolve();
-    });
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.drawImage(noiseImg, offsetX, offsetY, boxW, boxH);
-    ctx.restore();
+    const ni = new Image();
+    ni.src = generateNoiseDataUrl(adj.noise.amount);
+    await new Promise(r => { ni.onload = r; if (ni.complete) r(); });
+    ctx.drawImage(ni, ox, oy, bw, bh);
   }
 
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95));
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `single-photo-edited-${Date.now()}.jpg`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.download = `photo-edited-${Date.now()}.jpg`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   filter.remove();
 }
 
-// Intercept slider updates and redraw editor image
-const oldShowInspector = showInspector;
+// Intercept slider changes to live-update editor preview
+const _origShowInspector = showInspector;
 showInspector = function(idx) {
-  oldShowInspector(idx);
-  if ((idx === -1 || selectedIdx === idx) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
+  _origShowInspector(idx);
+  if (editorOverlay && !editorOverlay.hasAttribute('hidden')) {
     renderEditorImage();
   }
 };
 
-// Bind sliders input change events to redraw editor
 document.querySelectorAll('.inspector-section input').forEach(input => {
-  input.addEventListener('input', () => {
+  const handler = () => {
     if ((isSingleEditorMode || selectedIdx >= 0) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
       renderEditorImage();
     }
-  });
-  input.addEventListener('change', () => {
-    if ((isSingleEditorMode || selectedIdx >= 0) && editorOverlay && !editorOverlay.hasAttribute('hidden')) {
-      renderEditorImage();
-    }
-  });
+  };
+  input.addEventListener('input', handler);
+  input.addEventListener('change', handler);
 });
 
-// Fullscreen Editor Zoom & Pan controls (Ultra Smooth PointerEvents multi-touch implementation)
+/* ---- Editor Zoom & Pan (PointerEvents multi-touch) ---- */
 let isPanningEditor = false;
 let activePointers = [];
 let prevDiff = -1;
 let startScale = 1.0;
 let startPanX = 0, startPanY = 0;
 let startMidX = 0, startMidY = 0;
-let editorPanStartX = 0, editorPanStartY = 0;
-let editorPanInitialX = 0, editorPanInitialY = 0;
+let edPanStartX = 0, edPanStartY = 0;
+let edPanInitX = 0, edPanInitY = 0;
 
 editorViewport?.addEventListener('pointerdown', e => {
   const rbHandle = e.target.closest('.region-box-handle');
   const rbBox    = e.target.closest('.region-box');
-
-  const cell = isSingleEditorMode ? singleCell : (selectedIdx >= 0 ? canvasCells[selectedIdx] : null);
+  const cell = getActiveCell();
 
   if (rbBox && cell && activePointers.length === 0) {
     const effectKey = rbBox.dataset.effectKey || 'lines';
     const imgWrap = rbBox.closest('.cell-img-wrapper');
-    const wrapRect = imgWrap.getBoundingClientRect();
-    const boxState = cell.adj[effectKey].box || { x:10, y:10, w:80, h:80 };
+    const wr = imgWrap.getBoundingClientRect();
+    const bs = cell.adj[effectKey].box || { x:10, y:10, w:80, h:80 };
 
     interaction.active = true;
     interaction.cellIdx = isSingleEditorMode ? -1 : selectedIdx;
     interaction.mode = rbHandle ? 'rb_resize' : 'rb_move';
     interaction.rbEdge = rbHandle ? rbHandle.dataset.rbHandle : '';
     interaction.rbEffectKey = effectKey;
-    interaction.startMouseX = e.clientX;
-    interaction.startMouseY = e.clientY;
-    interaction.startBoxX = boxState.x;
-    interaction.startBoxY = boxState.y;
-    interaction.startBoxW = boxState.w;
-    interaction.startBoxH = boxState.h;
-    interaction.wrapW = wrapRect.width || 100;
-    interaction.wrapH = wrapRect.height || 100;
-
+    interaction.startMouseX = e.clientX; interaction.startMouseY = e.clientY;
+    interaction.startBoxX = bs.x; interaction.startBoxY = bs.y;
+    interaction.startBoxW = bs.w; interaction.startBoxH = bs.h;
+    interaction.wrapW = wr.width || 100; interaction.wrapH = wr.height || 100;
     editorViewport.setPointerCapture(e.pointerId);
     e.preventDefault();
     return;
   }
 
-  // Push pointer to active list
   activePointers.push(e);
-
   if (activePointers.length === 1) {
     isPanningEditor = true;
-    editorPanStartX = e.clientX;
-    editorPanStartY = e.clientY;
-    editorPanInitialX = editorPanX;
-    editorPanInitialY = editorPanY;
+    edPanStartX = e.clientX; edPanStartY = e.clientY;
+    edPanInitX = editorPanX; edPanInitY = editorPanY;
     editorViewport.style.cursor = 'grabbing';
   } else if (activePointers.length === 2) {
     isPanningEditor = false;
-    const p1 = activePointers[0];
-    const p2 = activePointers[1];
+    const p1 = activePointers[0], p2 = activePointers[1];
     prevDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
     startScale = editorScale;
-    startMidX = (p1.clientX + p2.clientX) / 2;
-    startMidY = (p1.clientY + p2.clientY) / 2;
-    startPanX = editorPanX;
-    startPanY = editorPanY;
+    startMidX = (p1.clientX + p2.clientX)/2; startMidY = (p1.clientY + p2.clientY)/2;
+    startPanX = editorPanX; startPanY = editorPanY;
   }
-  
   editorViewport.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
@@ -2248,47 +2259,42 @@ editorViewport?.addEventListener('pointerdown', e => {
 editorViewport?.addEventListener('pointermove', e => {
   const idx = activePointers.findIndex(p => p.pointerId === e.pointerId);
   if (idx >= 0) activePointers[idx] = e;
-
-  const cell = isSingleEditorMode ? singleCell : (selectedIdx >= 0 ? canvasCells[selectedIdx] : null);
+  const cell = getActiveCell();
 
   if (interaction.active && cell) {
     const dx = e.clientX - interaction.startMouseX;
     const dy = e.clientY - interaction.startMouseY;
-    const dxPct = (dx / (interaction.wrapW * editorScale)) * 100;
-    const dyPct = (dy / (interaction.wrapH * editorScale)) * 100;
+    const dxP = (dx / (interaction.wrapW * editorScale)) * 100;
+    const dyP = (dy / (interaction.wrapH * editorScale)) * 100;
 
-    const keysToUpdate = [];
-    if (cell.adj.lines && cell.adj.lines.mode === 'region') keysToUpdate.push('lines');
-    if (cell.adj.noise && cell.adj.noise.mode === 'region') keysToUpdate.push('noise');
-    if (keysToUpdate.length === 0) keysToUpdate.push(interaction.rbEffectKey);
+    const keys = [];
+    if (cell.adj.lines && cell.adj.lines.mode === 'region') keys.push('lines');
+    if (cell.adj.noise && cell.adj.noise.mode === 'region') keys.push('noise');
+    if (!keys.length) keys.push(interaction.rbEffectKey);
 
-    for (const k of keysToUpdate) {
-      const boxState = cell.adj[k].box || { x:10, y:10, w:80, h:80 };
+    for (const k of keys) {
+      const b = cell.adj[k].box || { x:10, y:10, w:80, h:80 };
       if (interaction.mode === 'rb_move') {
-        boxState.x = clamp(interaction.startBoxX + dxPct, 0, 100 - boxState.w);
-        boxState.y = clamp(interaction.startBoxY + dyPct, 0, 100 - boxState.h);
-      } else if (interaction.mode === 'rb_resize') {
+        b.x = clamp(interaction.startBoxX + dxP, 0, 100 - b.w);
+        b.y = clamp(interaction.startBoxY + dyP, 0, 100 - b.h);
+      } else {
         const edge = interaction.rbEdge;
         if (edge === 'se') {
-          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
-          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+          b.w = clamp(interaction.startBoxW + dxP, 10, 100 - b.x);
+          b.h = clamp(interaction.startBoxH + dyP, 10, 100 - b.y);
         } else if (edge === 'sw') {
-          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
-          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
-          boxState.w = newW;
-          boxState.h = clamp(interaction.startBoxH + dyPct, 10, 100 - boxState.y);
+          const nw = clamp(interaction.startBoxW - dxP, 10, interaction.startBoxX + interaction.startBoxW);
+          b.x = interaction.startBoxX + (interaction.startBoxW - nw); b.w = nw;
+          b.h = clamp(interaction.startBoxH + dyP, 10, 100 - b.y);
         } else if (edge === 'ne') {
-          boxState.w = clamp(interaction.startBoxW + dxPct, 10, 100 - boxState.x);
-          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
-          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
-          boxState.h = newH;
+          b.w = clamp(interaction.startBoxW + dxP, 10, 100 - b.x);
+          const nh = clamp(interaction.startBoxH - dyP, 10, interaction.startBoxY + interaction.startBoxH);
+          b.y = interaction.startBoxY + (interaction.startBoxH - nh); b.h = nh;
         } else if (edge === 'nw') {
-          const newW = clamp(interaction.startBoxW - dxPct, 10, interaction.startBoxX + interaction.startBoxW);
-          const newH = clamp(interaction.startBoxH - dyPct, 10, interaction.startBoxY + interaction.startBoxH);
-          boxState.x = interaction.startBoxX + (interaction.startBoxW - newW);
-          boxState.y = interaction.startBoxY + (interaction.startBoxH - newH);
-          boxState.w = newW;
-          boxState.h = newH;
+          const nw = clamp(interaction.startBoxW - dxP, 10, interaction.startBoxX + interaction.startBoxW);
+          const nh = clamp(interaction.startBoxH - dyP, 10, interaction.startBoxY + interaction.startBoxH);
+          b.x = interaction.startBoxX + (interaction.startBoxW - nw); b.w = nw;
+          b.y = interaction.startBoxY + (interaction.startBoxH - nh); b.h = nh;
         }
       }
     }
@@ -2297,59 +2303,36 @@ editorViewport?.addEventListener('pointermove', e => {
   }
 
   if (activePointers.length === 1 && isPanningEditor) {
-    const dx = e.clientX - editorPanStartX;
-    const dy = e.clientY - editorPanStartY;
-    editorPanX = editorPanInitialX + (dx / editorScale);
-    editorPanY = editorPanInitialY + (dy / editorScale);
+    editorPanX = edPanInitX + (e.clientX - edPanStartX) / editorScale;
+    editorPanY = edPanInitY + (e.clientY - edPanStartY) / editorScale;
     updateEditorTransform();
   } else if (activePointers.length === 2) {
-    const p1 = activePointers[0];
-    const p2 = activePointers[1];
-    const curDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-    
-    // Zoom scale factor
-    const factor = curDiff / prevDiff;
-    editorScale = Math.max(0.4, Math.min(4.0, Math.round((startScale * factor) * 100) / 100));
-
-    // Pan mid point translation
-    const curMidX = (p1.clientX + p2.clientX) / 2;
-    const curMidY = (p1.clientY + p2.clientY) / 2;
-    editorPanX = startPanX + (curMidX - startMidX);
-    editorPanY = startPanY + (curMidY - startMidY);
-
+    const p1 = activePointers[0], p2 = activePointers[1];
+    const cd = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    editorScale = Math.max(0.4, Math.min(4.0, Math.round(startScale * (cd / prevDiff) * 100) / 100));
+    const cmx = (p1.clientX + p2.clientX)/2, cmy = (p1.clientY + p2.clientY)/2;
+    editorPanX = startPanX + (cmx - startMidX); editorPanY = startPanY + (cmy - startMidY);
     updateEditorTransform();
   }
 });
 
 editorViewport?.addEventListener('pointerup', e => {
   activePointers = activePointers.filter(p => p.pointerId !== e.pointerId);
-  if (activePointers.length < 2) {
-    prevDiff = -1;
-  }
-  if (activePointers.length === 0) {
-    isPanningEditor = false;
-    editorViewport.style.cursor = '';
-  }
-  if (interaction.active) {
-    interaction.active = false;
-  }
-  editorViewport.releasePointerCapture(e.pointerId);
+  if (activePointers.length < 2) prevDiff = -1;
+  if (!activePointers.length) { isPanningEditor = false; editorViewport.style.cursor = ''; }
+  if (interaction.active) interaction.active = false;
+  try { editorViewport.releasePointerCapture(e.pointerId); } catch(_){}
 });
 
 editorViewport?.addEventListener('pointercancel', e => {
   activePointers = activePointers.filter(p => p.pointerId !== e.pointerId);
   if (activePointers.length < 2) prevDiff = -1;
-  if (activePointers.length === 0) {
-    isPanningEditor = false;
-    editorViewport.style.cursor = '';
-  }
+  if (!activePointers.length) { isPanningEditor = false; editorViewport.style.cursor = ''; }
   interaction.active = false;
 });
 
-// Wheel zoom in editor
 editorViewport?.addEventListener('wheel', e => {
   e.preventDefault();
-  const delta = e.deltaY < 0 ? 0.1 : -0.1;
-  editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorScale + delta) * 10) / 10));
+  editorScale = Math.max(0.4, Math.min(4.0, Math.round((editorScale + (e.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10));
   updateEditorTransform();
 }, { passive: false });

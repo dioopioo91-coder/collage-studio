@@ -56,7 +56,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   .navbar-left{gap:6px;flex-shrink:0}
   .logo span{font-size:12px}
   .badge{display:none}
-  .btn-tg{display:none !important}
+  /* .btn-tg is styled via dedicated mobile block below */
   .navbar-right #btn-clear-canvas{display:none}
   .navbar-right #btn-export{display:none}
   .mobile-export-btn{display:inline-flex !important;width:36px;height:36px;padding:0;border-radius:8px;flex-shrink:0}
@@ -341,7 +341,7 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 /* OVERLAY LAYERS & REGION SELECTION BOX */
 .cell-img-wrapper{position:relative;width:100%;flex:1;min-height:0;overflow:hidden}
 .cell-lines-overlay{position:absolute;pointer-events:none;z-index:4;overflow:hidden}
-.cell-noise-overlay{position:absolute;pointer-events:none;z-index:5;mix-blend-mode:overlay;overflow:hidden}
+.cell-noise-overlay{position:absolute;pointer-events:none;z-index:5;overflow:hidden}
 
 /* REGION SELECTION BOX */
 .region-box{position:absolute;border:2px dashed var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.35);z-index:10;box-sizing:border-box;cursor:move}
@@ -568,4 +568,40 @@ body.in-editor-mode .inspector-section #btn-deselect {
 }
 .editor-upload-btn[hidden] {
   display: none !important;
+}
+
+/* ============================================================
+   PIXELATED LINES (CRISP RENDER ON MOBILE ZOOM)
+   ============================================================ */
+.cell-lines-overlay {
+  image-rendering: -moz-crisp-edges !important;
+  image-rendering: -webkit-crisp-edges !important;
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
+}
+
+/* ============================================================
+   MOBILE TELEGRAM BUTTON STYLES
+   ============================================================ */
+@media (max-width: 768px) {
+  .btn-tg {
+    display: inline-flex !important;
+    padding: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #181c25 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #38bdf8 !important;
+  }
+  .btn-tg span {
+    display: none !important;
+  }
+  .btn-tg svg {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0 !important;
+  }
 }
