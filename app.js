@@ -397,11 +397,6 @@ function renderCollage() {
         rBox.style.height = box.h + '%';
         rBox.dataset.effectKey = activeEffectKey;
 
-        const labelBadge = document.createElement('div');
-        labelBadge.className = 'region-box-badge';
-        labelBadge.textContent = isLinesRegion ? 'ОБЛАСТЬ ЛИНИЙ' : 'ОБЛАСТЬ ШУМА';
-        rBox.appendChild(labelBadge);
-
         const corners = ['nw','ne','sw','se'];
         for (const c of corners) {
           const h = document.createElement('div');
