@@ -1560,31 +1560,54 @@ let zoomScale = 1.0;
 let zoomPanX = 0;
 let zoomPanY = 0;
 
+function getFitScale() {
+  const vp = viewport.getBoundingClientRect();
+  const fw = parseFloat(frame.style.width) || 1000;
+  const fh = parseFloat(frame.style.height) || 800;
+  const isMobile = window.innerWidth <= 768;
+  const pad = isMobile ? 14 : 40;
+  const fitW = (vp.width - pad * 2) / fw;
+  const fitH = (vp.height - pad * 2) / fh;
+  return Math.max(0.05, Math.min(fitW, fitH));
+}
+
+function resetZoom() {
+  const isMobile = window.innerWidth <= 768;
+  zoomScale = isMobile ? Math.round(getFitScale() * 1000) / 1000 : 1.0;
+  zoomPanX = 0;
+  zoomPanY = 0;
+  updateZoomTransform();
+}
+
 function updateZoomTransform() {
   frame.style.transform = `scale(${zoomScale}) translate(${zoomPanX}px, ${zoomPanY}px)`;
   const zoomValEl = $('#zoom-val');
-  if (zoomValEl) zoomValEl.textContent = Math.round(zoomScale * 100) + '%';
+  if (zoomValEl) {
+    const isMobile = window.innerWidth <= 768;
+    const baseScale = isMobile ? getFitScale() : 1.0;
+    const relZoom = Math.round((zoomScale / (baseScale || 1)) * 100);
+    zoomValEl.textContent = relZoom + '%';
+  }
 }
 
 viewport.addEventListener('wheel', e => {
   e.preventDefault();
-  const delta = e.deltaY < 0 ? 0.1 : -0.1;
-  zoomScale = Math.max(0.4, Math.min(3.0, Math.round((zoomScale + delta) * 10) / 10));
+  const delta = e.deltaY < 0 ? 0.08 : -0.08;
+  const minZ = Math.min(0.05, getFitScale() * 0.4);
+  zoomScale = Math.max(minZ, Math.min(4.0, Math.round((zoomScale + delta) * 100) / 100));
   updateZoomTransform();
 }, { passive: false });
 
 $('#btn-zoom-in')?.addEventListener('click', () => {
-  zoomScale = Math.min(3.0, Math.round((zoomScale + 0.1) * 10) / 10);
+  zoomScale = Math.min(4.0, Math.round((zoomScale + 0.1) * 100) / 100);
   updateZoomTransform();
 });
 $('#btn-zoom-out')?.addEventListener('click', () => {
-  zoomScale = Math.max(0.4, Math.round((zoomScale - 0.1) * 10) / 10);
+  const minZ = Math.min(0.05, getFitScale() * 0.4);
+  zoomScale = Math.max(minZ, Math.round((zoomScale - 0.1) * 100) / 100);
   updateZoomTransform();
 });
-$('#btn-zoom-reset')?.addEventListener('click', () => {
-  zoomScale = 1.0; zoomPanX = 0; zoomPanY = 0;
-  updateZoomTransform();
-});
+$('#btn-zoom-reset')?.addEventListener('click', resetZoom);
 
 const selectBtn = $('#btn-select-tool');
 const panBtn    = $('#btn-pan-tool');
@@ -1611,14 +1634,12 @@ btnModePan?.addEventListener('click', () => {
   setNavigationMode(true);
 });
 
-
 selectBtn?.addEventListener('click', () => setNavigationMode(false));
 panBtn?.addEventListener('click', () => setNavigationMode(true));
 
 viewport.addEventListener('dblclick', e => {
   if (e.target === viewport || e.target === frame) {
-    zoomScale = 1.0; zoomPanX = 0; zoomPanY = 0;
-    updateZoomTransform();
+    resetZoom();
   }
 });
 
@@ -1651,7 +1672,8 @@ viewport.addEventListener('touchmove', e => {
     const t2 = e.touches[1];
     const distNow = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
     const factor = distNow / touchStartDist;
-    zoomScale = Math.max(0.4, Math.min(3.0, Math.round((touchStartScale * factor) * 100) / 100));
+    const minZ = Math.min(0.05, getFitScale() * 0.4);
+    zoomScale = Math.max(minZ, Math.min(4.0, Math.round((touchStartScale * factor) * 1000) / 1000));
 
     const curMidX = (t1.clientX + t2.clientX) / 2;
     const curMidY = (t1.clientY + t2.clientY) / 2;
