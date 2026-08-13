@@ -666,13 +666,13 @@ body.in-editor-mode .inspector-section #btn-deselect {
     display: none !important;
   }
   
-  /* Floating switcher at top center */
+  /* Floating switcher at top-left */
   .canvas-mode-switcher {
     display: flex !important;
     position: fixed !important;
-    top: 8px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    top: 10px !important;
+    left: 12px !important;
+    transform: none !important;
     z-index: 120 !important;
   }
 
@@ -721,7 +721,7 @@ body.in-editor-mode .inspector-section #btn-deselect {
 
   .mobile-tab-btn {
     width: 54px !important;
-    height: 48px !important;
+    height: 50px !important;
     flex: none !important;
     border-radius: 10px !important;
   }
@@ -732,8 +732,22 @@ body.in-editor-mode .inspector-section #btn-deselect {
     width: 19px !important;
     height: 19px !important;
   }
-  .mobile-dock-tg, .mobile-dock-export {
+  .mobile-dock-tg {
+    display: none !important;
+  }
+  .mobile-dock-export {
     display: flex !important;
+    background: var(--accent) !important;
+    color: #0f0f12 !important;
+    box-shadow: 0 3px 12px rgba(254, 240, 138, 0.3) !important;
+  }
+  .mobile-dock-export svg {
+    color: #0f0f12 !important;
+    stroke: #0f0f12 !important;
+  }
+  .mobile-dock-export span {
+    color: #0f0f12 !important;
+    font-weight: 800 !important;
   }
 
   /* Side-sliding sheets from the right */
