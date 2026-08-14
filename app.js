@@ -245,6 +245,7 @@ function redistributeLayout() {
   const fh = frame.offsetHeight || 800;
   const canvasRatio = fw / fh;
   const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  const isVertical = canvasRatio <= 1.05;
 
   // Gather individual asset aspect ratios (ir = width / height)
   const itemsIr = canvasCells.map(c => {
@@ -255,21 +256,39 @@ function redistributeLayout() {
   // Candidate row partition generator
   function getPartitions(count) {
     if (count === 1) return [[1]];
-    if (count === 2) return (canvasRatio >= 0.9) ? [[2], [1, 1]] : [[1, 1], [2]];
-    if (count === 3) return [[3], [2, 1], [1, 2], [1, 1, 1]];
-    if (count === 4) return [[2, 2], [3, 1], [1, 3], [4], [2, 1, 1], [1, 2, 1], [1, 1, 2]];
-    if (count === 5) return [[3, 2], [2, 3], [2, 2, 1], [1, 2, 2], [2, 1, 2], [1, 3, 1]];
-    if (count === 6) return [[3, 3], [2, 2, 2], [2, 4], [4, 2], [2, 3, 1], [1, 3, 2], [1, 2, 3], [3, 2, 1]];
-    if (count === 7) return [[4, 3], [3, 4], [3, 2, 2], [2, 3, 2], [2, 2, 3]];
-    if (count === 8) return [[4, 4], [3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 4, 2]];
-    
-    // For n >= 9
-    const cols = (canvasRatio < 1.0) ? 2 : (canvasRatio < 1.5 ? 3 : 4);
-    const rowsCnt = Math.ceil(count / cols);
-    const base = new Array(rowsCnt - 1).fill(cols);
-    const rem = count - (cols * (rowsCnt - 1));
-    base.push(rem);
-    return [base];
+    if (isVertical) {
+      // VERTICAL CANVAS (<= 1.05): strictly max 2 cards per row for large, balanced images
+      if (count === 2) return [[1, 1], [2]];
+      if (count === 3) return [[2, 1], [1, 2]];
+      if (count === 4) return [[2, 2]];
+      if (count === 5) return [[2, 2, 1], [1, 2, 2], [2, 1, 2]];
+      if (count === 6) return [[2, 2, 2]];
+      if (count === 7) return [[2, 2, 2, 1], [1, 2, 2, 2], [2, 2, 1, 2], [2, 1, 2, 2]];
+      if (count === 8) return [[2, 2, 2, 2]];
+
+      const cols = 2;
+      const rowsCnt = Math.ceil(count / cols);
+      const base = new Array(rowsCnt - 1).fill(cols);
+      const rem = count - (cols * (rowsCnt - 1));
+      base.push(rem);
+      return [base];
+    } else {
+      // HORIZONTAL CANVAS (> 1.05): strictly max 3 cards per row
+      if (count === 2) return [[2], [1, 1]];
+      if (count === 3) return [[3], [2, 1], [1, 2]];
+      if (count === 4) return [[2, 2], [3, 1], [1, 3]];
+      if (count === 5) return [[3, 2], [2, 3]];
+      if (count === 6) return [[3, 3], [2, 2, 2]];
+      if (count === 7) return [[3, 2, 2], [2, 3, 2], [2, 2, 3], [3, 3, 1]];
+      if (count === 8) return [[3, 3, 2], [3, 2, 3], [2, 3, 3]];
+
+      const cols = 3;
+      const rowsCnt = Math.ceil(count / cols);
+      const base = new Array(rowsCnt - 1).fill(cols);
+      const rem = count - (cols * (rowsCnt - 1));
+      base.push(rem);
+      return [base];
+    }
   }
 
   let bestScore = -Infinity;
@@ -304,6 +323,21 @@ function redistributeLayout() {
     }
 
     if (!valid) continue;
+
+    // Harmonize row heights so single-item rows don't become excessively huge
+    const maxItemsRow = Math.max(...rowsData.map(r => r.count));
+    const multiItemRows = rowsData.filter(r => r.count === maxItemsRow);
+    const refImgH = multiItemRows.length > 0
+      ? multiItemRows.reduce((sum, r) => sum + r.imgH, 0) / multiItemRows.length
+      : rowsData.reduce((sum, r) => sum + r.imgH, 0) / rowsData.length;
+
+    for (const r of rowsData) {
+      if (r.count < maxItemsRow && r.imgH > refImgH * 1.2) {
+        r.imgH = refImgH * 1.15;
+        r.rowH = tagH + r.imgH;
+        r.itemWs = r.irs.map(ir => r.imgH * ir);
+      }
+    }
 
     const numRows = rowsData.length;
     const availH = fh - (numRows + 1) * gap;
@@ -345,8 +379,8 @@ function redistributeLayout() {
     const varH = rowHeights.reduce((sum, h) => sum + Math.pow(h - avgH, 2), 0) / rowHeights.length;
     const stdH = Math.sqrt(varH);
 
-    // Score combines max area fill and row height harmony
-    const score = (utilization * 100) - (stdH / (avgH || 1)) * 12;
+    // Score combines max area fill and row height balance
+    const score = (utilization * 100) - (stdH / (avgH || 1)) * 15;
 
     if (score > bestScore) {
       bestScore = score;
@@ -945,18 +979,23 @@ collage.addEventListener('pointerup', e => {
 
   if (mode === 'swap' && wasDragged && target >= 0) {
     const a = idx, b = target;
-    // Swap cells in array
-    const temp = canvasCells[a];
-    canvasCells[a] = canvasCells[b];
-    canvasCells[b] = temp;
+    // Swap assets & adjustments between the two cells, preserving box positions/sizes
+    const tempAssetId = canvasCells[a].assetId;
+    const tempAdj = canvasCells[a].adj;
+    canvasCells[a].assetId = canvasCells[b].assetId;
+    canvasCells[a].adj = canvasCells[b].adj;
+    canvasCells[b].assetId = tempAssetId;
+    canvasCells[b].adj = tempAdj;
 
-    // Automatically recalculate optimal justified layout so both images reshape to their aspect ratios!
-    redistributeLayout();
+    canvasCells[a].fx = interaction.startFx;
+    canvasCells[a].fy = interaction.startFy;
+
     renderCollage();
     selectCell(b);
   } else if (mode === 'swap' && wasDragged && target < 0) {
-    // Restore layout if dropped outside
-    redistributeLayout();
+    // Restore dragged position without wiping out other custom sizes
+    canvasCells[idx].fx = interaction.startFx;
+    canvasCells[idx].fy = interaction.startFy;
     renderCollage();
   } else if (!wasDragged) {
     selectCell(idx);
@@ -1302,9 +1341,9 @@ $('#stroke-enable').addEventListener('change', e => {
   renderCollage();
 });
 
-bindSliderAndNum(sGap, nGap, val => { gap = val; redistributeLayout(); renderCollage(); });
+bindSliderAndNum(sGap, nGap, val => { gap = val; renderCollage(); });
 bindSliderAndNum(sRadius, nRadius, val => { radius = val; renderCollage(); });
-bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; redistributeLayout(); renderCollage(); });
+bindSliderAndNum(sTagSize, nTagSize, val => { tagSize = val; renderCollage(); });
 bindSliderAndNum(sFrameStroke, nFrameStroke, val => { strokeWidth = val; renderCollage(); });
 $$('.ratio-btn').forEach(btn => {
   btn.addEventListener('click', () => {
