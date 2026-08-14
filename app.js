@@ -253,42 +253,60 @@ function redistributeLayout() {
     return asset ? (asset.natW / asset.natH) : 1;
   });
 
-  // Candidate row partition generator
+  // Dynamic mathematical row partition generator based on item count and canvas ratio
   function getPartitions(count) {
+    if (count <= 0) return [];
     if (count === 1) return [[1]];
+
     if (isVertical) {
-      // VERTICAL CANVAS (<= 1.05): strictly max 2 cards per row for large, balanced images
+      // VERTICAL CANVAS (<= 1.05):
+      // <= 6 photos: max 2 in a row
+      // 7-12 photos: max 3 in a row
+      // 13+ photos: max 4 in a row
       if (count === 2) return [[1, 1], [2]];
       if (count === 3) return [[2, 1], [1, 2]];
       if (count === 4) return [[2, 2]];
       if (count === 5) return [[2, 2, 1], [1, 2, 2], [2, 1, 2]];
       if (count === 6) return [[2, 2, 2]];
-      if (count === 7) return [[2, 2, 2, 1], [1, 2, 2, 2], [2, 2, 1, 2], [2, 1, 2, 2]];
-      if (count === 8) return [[2, 2, 2, 2]];
-
-      const cols = 2;
-      const rowsCnt = Math.ceil(count / cols);
-      const base = new Array(rowsCnt - 1).fill(cols);
-      const rem = count - (cols * (rowsCnt - 1));
-      base.push(rem);
-      return [base];
+      if (count === 7) return [[3, 2, 2], [2, 3, 2], [2, 2, 3]];
+      if (count === 8) return [[3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 2, 2, 2]];
+      if (count === 9) return [[3, 3, 3]];
+      if (count === 10) return [[3, 3, 2, 2], [3, 2, 3, 2], [2, 3, 3, 2]];
+      if (count === 11) return [[3, 3, 3, 2], [3, 3, 2, 3]];
+      if (count === 12) return [[3, 3, 3, 3], [4, 4, 4]];
     } else {
-      // HORIZONTAL CANVAS (> 1.05): strictly max 3 cards per row
+      // HORIZONTAL CANVAS (> 1.05):
+      // <= 6 photos: max 3 in a row
+      // 7-12 photos: max 4 in a row
+      // 13+ photos: max 5 in a row
       if (count === 2) return [[2], [1, 1]];
       if (count === 3) return [[3], [2, 1], [1, 2]];
       if (count === 4) return [[2, 2], [3, 1], [1, 3]];
       if (count === 5) return [[3, 2], [2, 3]];
       if (count === 6) return [[3, 3], [2, 2, 2]];
-      if (count === 7) return [[3, 2, 2], [2, 3, 2], [2, 2, 3], [3, 3, 1]];
-      if (count === 8) return [[3, 3, 2], [3, 2, 3], [2, 3, 3]];
-
-      const cols = 3;
-      const rowsCnt = Math.ceil(count / cols);
-      const base = new Array(rowsCnt - 1).fill(cols);
-      const rem = count - (cols * (rowsCnt - 1));
-      base.push(rem);
-      return [base];
+      if (count === 7) return [[4, 3], [3, 4]];
+      if (count === 8) return [[4, 4], [3, 3, 2]];
+      if (count === 9) return [[3, 3, 3], [4, 3, 2], [4, 4, 1]];
+      if (count === 10) return [[4, 3, 3], [3, 4, 3], [4, 4, 2], [5, 5]];
+      if (count === 11) return [[4, 4, 3], [4, 3, 4]];
+      if (count === 12) return [[4, 4, 4], [3, 3, 3, 3]];
     }
+
+    // Dynamic partition generator for larger n
+    const maxCols = isVertical ? (count <= 12 ? 3 : 4) : (count <= 12 ? 4 : 5);
+    const numRows = Math.ceil(count / maxCols);
+    const baseCols = Math.floor(count / numRows);
+    const remainder = count % numRows;
+
+    const p1 = [];
+    for (let r = 0; r < numRows; r++) {
+      p1.push(r < remainder ? baseCols + 1 : baseCols);
+    }
+    const p2 = [];
+    for (let r = 0; r < numRows; r++) {
+      p2.push(r >= (numRows - remainder) ? baseCols + 1 : baseCols);
+    }
+    return [p1, p2];
   }
 
   let bestScore = -Infinity;
