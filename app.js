@@ -260,25 +260,29 @@ function redistributeLayout() {
 
     if (isVertical) {
       // VERTICAL CANVAS (<= 1.05):
-      // <= 6 photos: max 2 in a row
-      // 7-12 photos: max 3 in a row
-      // 13+ photos: max 4 in a row
-      if (count === 2) return [[1, 1], [2]];
-      if (count === 3) return [[2, 1], [1, 2]];
-      if (count === 4) return [[2, 2]];
-      if (count === 5) return [[2, 2, 1], [1, 2, 2], [2, 1, 2]];
+      // 1-3 photos: 1 in a row (full width stacked)
+      // 4 photos: 2 big (1+1) + 2 small (1 row of 2) = 4 total
+      // 5 photos: 1 big + 4 small (2 rows of 2) = 5 total
+      // 6 photos: all 6 equal (3 rows of 2)
+      // 7 photos: 1 row of 3 + 2 rows of 2
+      // 8 photos: 2 rows of 3 + 1 row of 2
+      // 9 photos: all 9 equal (3 rows of 3)
+      if (count === 2) return [[1, 1]];
+      if (count === 3) return [[1, 1, 1]];
+      if (count === 4) return [[1, 1, 2], [2, 1, 1], [1, 2, 1]];
+      if (count === 5) return [[1, 2, 2], [2, 2, 1], [2, 1, 2]];
       if (count === 6) return [[2, 2, 2]];
-      if (count === 7) return [[3, 2, 2], [2, 3, 2], [2, 2, 3]];
-      if (count === 8) return [[3, 3, 2], [3, 2, 3], [2, 3, 3], [2, 2, 2, 2]];
+      if (count === 7) return [[3, 2, 2], [2, 2, 3], [2, 3, 2]];
+      if (count === 8) return [[3, 3, 2], [2, 3, 3], [3, 2, 3]];
       if (count === 9) return [[3, 3, 3]];
-      if (count === 10) return [[3, 3, 2, 2], [3, 2, 3, 2], [2, 3, 3, 2]];
-      if (count === 11) return [[3, 3, 3, 2], [3, 3, 2, 3]];
-      if (count === 12) return [[3, 3, 3, 3], [4, 4, 4]];
+      if (count === 10) return [[4, 3, 3], [3, 3, 4], [3, 4, 3]];
+      if (count === 11) return [[4, 4, 3], [3, 4, 4], [4, 3, 4]];
+      if (count === 12) return [[4, 4, 4], [3, 3, 3, 3]];
     } else {
       // HORIZONTAL CANVAS (> 1.05):
-      // <= 6 photos: max 3 in a row
-      // 7-12 photos: max 4 in a row
-      // 13+ photos: max 5 in a row
+      // 1-3 photos: 1 row of up to 3
+      // 4-6 photos: rows of up to 3 (6 is [3, 3])
+      // 7-12 photos: rows of up to 4
       if (count === 2) return [[2], [1, 1]];
       if (count === 3) return [[3], [2, 1], [1, 2]];
       if (count === 4) return [[2, 2], [3, 1], [1, 3]];
@@ -342,21 +346,6 @@ function redistributeLayout() {
 
     if (!valid) continue;
 
-    // Harmonize row heights so single-item rows don't become excessively huge
-    const maxItemsRow = Math.max(...rowsData.map(r => r.count));
-    const multiItemRows = rowsData.filter(r => r.count === maxItemsRow);
-    const refImgH = multiItemRows.length > 0
-      ? multiItemRows.reduce((sum, r) => sum + r.imgH, 0) / multiItemRows.length
-      : rowsData.reduce((sum, r) => sum + r.imgH, 0) / rowsData.length;
-
-    for (const r of rowsData) {
-      if (r.count < maxItemsRow && r.imgH > refImgH * 1.2) {
-        r.imgH = refImgH * 1.15;
-        r.rowH = tagH + r.imgH;
-        r.itemWs = r.irs.map(ir => r.imgH * ir);
-      }
-    }
-
     const numRows = rowsData.length;
     const availH = fh - (numRows + 1) * gap;
     const sumRowsH = rowsData.reduce((sum, r) => sum + r.rowH, 0);
@@ -392,13 +381,7 @@ function redistributeLayout() {
     }
 
     const utilization = totalArea / (fw * fh);
-    const rowHeights = rowsData.map(r => r.rowH * scale);
-    const avgH = rowHeights.reduce((a, b) => a + b, 0) / rowHeights.length;
-    const varH = rowHeights.reduce((sum, h) => sum + Math.pow(h - avgH, 2), 0) / rowHeights.length;
-    const stdH = Math.sqrt(varH);
-
-    // Score combines max area fill and row height balance
-    const score = (utilization * 100) - (stdH / (avgH || 1)) * 15;
+    const score = utilization * 100;
 
     if (score > bestScore) {
       bestScore = score;
