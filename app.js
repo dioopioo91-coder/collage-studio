@@ -1413,8 +1413,14 @@ async function runExportProcess(baseW, mimeType) {
   await sleep(50);
 
   const ratio = getRatio();
-  let targetW = baseW;
-  let targetH = Math.round(targetW / ratio);
+  let targetW, targetH;
+  if (ratio >= 1) {
+    targetW = baseW;
+    targetH = Math.round(targetW / ratio);
+  } else {
+    targetH = baseW;
+    targetW = Math.round(targetH * ratio);
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width = targetW; canvas.height = targetH;
