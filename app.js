@@ -79,7 +79,7 @@ function dbGetAll() {
 }
 
 /* STATE  */
-let library       = [];  // {id, blob, thumbUrl, natW, natH}
+let library       = [];  // {id, blob, thumbUrl, natW, natH, fileName}
 let canvasCells   = [];  // {assetId, adj, fx, fy, fw, fh} — fractional 0..1
 let selectedIdx   = -1;
 let isSingleEditorMode = false;
@@ -87,7 +87,42 @@ let singleCell    = null;
 let frameColor    = '#ffffff';
 let strokeWidth   = 3;
 let tagEnabled    = true;
+let tagSize       = 18;
+let tagMode       = 'tag'; // 'tag' or 'name'
 let strokeEnabled = true;
+let gap           = 10;
+let radius        = 10;
+
+/* UNDO / REDO HISTORY SYSTEM */
+var undoStack = [];
+var redoStack = [];
+var MAX_HISTORY = 30;
+
+function getCanvasStateSnapshot() {
+  return {
+    canvasCells: JSON.parse(JSON.stringify(canvasCells)),
+    selectedIdx: selectedIdx,
+    gap: gap,
+    radius: radius,
+    tagSize: tagSize,
+    tagEnabled: tagEnabled,
+    tagMode: tagMode,
+    strokeEnabled: strokeEnabled,
+    strokeWidth: strokeWidth,
+    frameColor: frameColor,
+    ratio: (typeof sRatio !== 'undefined' && sRatio) ? sRatio.value : '16:9'
+  };
+}
+
+function saveState() {
+  try {
+    if (undoStack.length >= MAX_HISTORY) undoStack.shift();
+    undoStack.push(getCanvasStateSnapshot());
+    redoStack.length = 0;
+  } catch(e) {
+    console.warn('saveState error:', e);
+  }
+}
 
 const defaultAdj = () => ({
   brightness: 100,
@@ -227,9 +262,7 @@ const adjSliders = {
   b:          { el: $('#adj-b'),          num: $('#adj-b-num') },
 };
 
-let gap     = 10;
-let radius  = 10;
-let tagSize = 18;
+// gap, radius, tagSize, tagMode initialized in global state
 
 function getRatio() {
   const v = sRatio.value.split(':').map(Number);
@@ -2520,31 +2553,6 @@ window.addEventListener('orientationchange', () => {
 /* ============================================================
    UNDO / REDO SYSTEM (Ctrl+Z / Ctrl+Y) & TAG MODE SWITCHER
 ============================================================ */
-const undoStack = [];
-const redoStack = [];
-const MAX_HISTORY = 30;
-
-function getCanvasStateSnapshot() {
-  return {
-    canvasCells: JSON.parse(JSON.stringify(canvasCells)),
-    selectedIdx: selectedIdx,
-    gap: gap,
-    radius: radius,
-    tagSize: tagSize,
-    tagEnabled: tagEnabled,
-    tagMode: tagMode,
-    strokeEnabled: strokeEnabled,
-    strokeWidth: strokeWidth,
-    frameColor: frameColor,
-    ratio: sRatio ? sRatio.value : '16:9'
-  };
-}
-
-function saveState() {
-  if (undoStack.length >= MAX_HISTORY) undoStack.shift();
-  undoStack.push(getCanvasStateSnapshot());
-  redoStack.length = 0;
-}
 
 function applyCanvasStateSnapshot(state) {
   if (!state) return;
