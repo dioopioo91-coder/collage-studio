@@ -1294,9 +1294,18 @@ function renderLibrary() {
   for (const item of library) {
     const card = document.createElement('div');
     card.className = 'lib-card';
+    card.draggable = true;
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('application/x-asset-id', item.id);
+      e.dataTransfer.setData('text/plain', item.id);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+
     const img = document.createElement('img');
     img.src = item.thumbUrl; img.loading = 'lazy';
+    img.draggable = false;
     card.appendChild(img);
+
     const del = document.createElement('button');
     del.className = 'lib-del-btn'; del.textContent = '✕';
     del.addEventListener('click', e => { e.stopPropagation(); removeFromLibrary(item.id); });
@@ -1357,12 +1366,26 @@ if (globalFileInput) {
   });
 }
 
-/* DRAG & DROP FILES  */
-viewport.addEventListener('dragover', e => { e.preventDefault(); frame.classList.add('drag-over'); });
+/* DRAG & DROP ON CANVAS */
+viewport.addEventListener('dragover', e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  frame.classList.add('drag-over');
+});
 viewport.addEventListener('dragleave', () => frame.classList.remove('drag-over'));
 viewport.addEventListener('drop', e => {
-  e.preventDefault(); frame.classList.remove('drag-over');
-  if (e.dataTransfer.files.length > 0) {
+  e.preventDefault();
+  frame.classList.remove('drag-over');
+
+  // Check if dragged from internal library assets
+  const assetId = e.dataTransfer.getData('application/x-asset-id') || e.dataTransfer.getData('text/plain');
+  if (assetId && library.some(a => a.id === assetId)) {
+    addToCollage(assetId);
+    return;
+  }
+
+  // External files dropped from computer desktop
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
   }
