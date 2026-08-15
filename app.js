@@ -1951,7 +1951,8 @@ const i18n = {
     modeSelect: "Фото",
     modePan: "Холст",
     uploadPhoto: "Выбрать фото",
-    fileName: "Имя"
+    tagBadge: "@ТЕГ",
+    fileName: "ИМЯ"
   },
   en: {
     ratio: "RATIO",
@@ -1996,7 +1997,8 @@ const i18n = {
     modeSelect: "Photo",
     modePan: "Canvas",
     uploadPhoto: "Upload Photo",
-    fileName: "Name"
+    tagBadge: "@TAG",
+    fileName: "NAME"
   }
 };
 
@@ -2558,20 +2560,45 @@ function applyCanvasStateSnapshot(state) {
   if (!state) return;
   canvasCells = JSON.parse(JSON.stringify(state.canvasCells));
   selectedIdx = state.selectedIdx;
-  gap = state.gap; if (sGap) { sGap.value = gap; if (nGap) nGap.value = gap; }
-  radius = state.radius; if (sRadius) { sRadius.value = radius; if (nRadius) nRadius.value = radius; }
-  tagSize = state.tagSize; if (sTagSize) { sTagSize.value = tagSize; if (nTagSize) nTagSize.value = tagSize; }
-  tagEnabled = state.tagEnabled; if (cTag) cTag.checked = tagEnabled;
+
+  gap = state.gap !== undefined ? state.gap : 10;
+  const elGap = $('#collage-gap'), elGapNum = $('#gap-num');
+  if (elGap) elGap.value = gap; if (elGapNum) elGapNum.value = gap;
+
+  radius = state.radius !== undefined ? state.radius : 10;
+  const elRad = $('#border-radius'), elRadNum = $('#radius-num');
+  if (elRad) elRad.value = radius; if (elRadNum) elRadNum.value = radius;
+
+  tagSize = state.tagSize !== undefined ? state.tagSize : 18;
+  const elTag = $('#tag-size'), elTagNum = $('#tag-size-num');
+  if (elTag) elTag.value = tagSize; if (elTagNum) elTagNum.value = tagSize;
+
+  tagEnabled = state.tagEnabled !== undefined ? state.tagEnabled : true;
+  const elTagEn = $('#tag-enable');
+  if (elTagEn) elTagEn.checked = tagEnabled;
+
   tagMode = state.tagMode || 'tag';
   updateTagModeUI();
-  strokeEnabled = state.strokeEnabled; if (cStroke) cStroke.checked = strokeEnabled;
-  strokeWidth = state.strokeWidth; if (sFrameStroke) { sFrameStroke.value = strokeWidth; if (nFrameStroke) nFrameStroke.value = strokeWidth; }
-  frameColor = state.frameColor; if (sFrameColor) { sFrameColor.value = frameColor; if (vFrameColor) vFrameColor.textContent = frameColor.toUpperCase(); }
+
+  strokeEnabled = state.strokeEnabled !== undefined ? state.strokeEnabled : true;
+  const elStrokeEn = $('#stroke-enable');
+  if (elStrokeEn) elStrokeEn.checked = strokeEnabled;
+
+  strokeWidth = state.strokeWidth !== undefined ? state.strokeWidth : 3;
+  const elStroke = $('#frame-stroke'), elStrokeNum = $('#frame-stroke-num');
+  if (elStroke) elStroke.value = strokeWidth; if (elStrokeNum) elStrokeNum.value = strokeWidth;
+
+  frameColor = state.frameColor || '#ffffff';
+  const elColor = $('#frame-color'), elColorVal = $('#frame-color-val');
+  if (elColor) elColor.value = frameColor;
+  if (elColorVal) elColorVal.textContent = frameColor.toUpperCase();
+
   if (state.ratio && sRatio && sRatio.value !== state.ratio) {
     sRatio.value = state.ratio;
     $$('.ratio-btn').forEach(b => b.classList.toggle('active', b.dataset.ratio === state.ratio));
     updateFrameSize();
   }
+
   if (selectedIdx >= 0 && selectedIdx < canvasCells.length) {
     showInspector(selectedIdx);
   } else {
