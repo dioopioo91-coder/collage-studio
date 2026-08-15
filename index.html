@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 </head>
 <body>
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
@@ -61,7 +61,13 @@
         </div>
         <div class="tool-divider"></div>
         <div class="tool-item prop-row-layout">
-          <label class="tool-toggle-label"><input type="checkbox" id="tag-enable" checked> <span class="tool-label" data-i18n="tag">ТЕГ</span></label>
+          <div class="tag-control-header">
+            <label class="tool-toggle-label"><input type="checkbox" id="tag-enable" checked> <span class="tool-label" data-i18n="tag">ТЕГ</span></label>
+            <div class="tag-mode-switch">
+              <button type="button" class="tag-mode-btn active" id="btn-tag-mode-tag" data-tag-mode="tag">@ТЕГ</button>
+              <button type="button" class="tag-mode-btn" id="btn-tag-mode-name" data-tag-mode="name" data-i18n="fileName">ИМЯ</button>
+            </div>
+          </div>
           <div class="slider-val-box"><input type="range" id="tag-size" min="12" max="32" value="18" class="app-slider"><input type="number" id="tag-size-num" min="12" max="32" value="18" class="val-num-input"></div>
         </div>
         <div class="tool-divider"></div>
@@ -105,6 +111,13 @@
 
         <!-- Zoom & Pan Controls (Bottom Center) -->
         <div class="zoom-controls">
+          <button class="icon-btn" id="btn-undo" title="Отменить (Ctrl+Z)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-redo" title="Повторить (Ctrl+Y)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+          </button>
+          <div class="tool-divider"></div>
           <button class="icon-btn active" id="btn-select-tool" title="Select Tool">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
           </button>
@@ -321,6 +334,6 @@
   <!-- Global file input: visually hidden but accessible to <label for> clicks -->
   <input type="file" id="global-file-input" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
 
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

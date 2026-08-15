@@ -530,7 +530,7 @@ function renderCollage() {
     if (tagEnabled) {
       const tag = document.createElement('div');
       tag.className = 'cell-tag';
-      tag.textContent = '@IMAGE' + (i + 1);
+      tag.textContent = (tagMode === 'name' && asset.fileName) ? asset.fileName : ('@IMAGE' + (i + 1));
       tag.style.fontSize = activeTagSize + 'px';
       tag.style.height = cellTagH + 'px';
       tag.style.lineHeight = cellTagH + 'px';
@@ -792,6 +792,7 @@ collage.addEventListener('pointerdown', e => {
   interaction.startFy = cell.fy;
   interaction.startFw = cell.fw;
   interaction.startFh = cell.fh;
+  saveState();
   interaction.didDrag = false;
   interaction.swapTarget = -1;
 
@@ -1013,6 +1014,7 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 /* CELL OPERATIONS  */
 function removeCell(idx) {
+  saveState();
   canvasCells.splice(idx, 1);
   if (selectedIdx === idx) { selectedIdx = -1; hideInspector(); }
   else if (selectedIdx > idx) selectedIdx--;
@@ -1272,12 +1274,14 @@ function renderLibrary() {
 }
 
 function addToCollage(assetId) {
+  saveState();
   canvasCells.push({ assetId, adj: defaultAdj(), fx:0, fy:0, fw:0, fh:0 });
   redistributeLayout();
   renderCollage();
 }
 
 async function removeFromLibrary(id) {
+  saveState();
   canvasCells = canvasCells.filter(c => c.assetId !== id);
   if (selectedIdx >= canvasCells.length) { selectedIdx = -1; hideInspector(); }
   const item = library.find(a => a.id === id);
@@ -1303,7 +1307,8 @@ async function handleFiles(files) {
     const blob = file;
     const thumbUrl = URL.createObjectURL(blob);
     const dims = await getImageDims(thumbUrl);
-    library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h });
+    const cleanName = (file.name || 'image').replace(/\.[^/.]+$/, '');
+    library.push({ id, blob, thumbUrl, natW: dims.w, natH: dims.h, fileName: cleanName });
     newAssetIds.push(id);
     try { await dbPut({ id, blob }); } catch(e) { console.warn('DB save failed:', e); }
   }
@@ -1369,8 +1374,10 @@ sRatio?.addEventListener('change', () => {
 });
 sFrameColor.addEventListener('input', () => { frameColor=sFrameColor.value; vFrameColor.textContent=frameColor.toUpperCase(); renderCollage(); });
 
-$('#btn-clear-canvas').addEventListener('click', () => { canvasCells=[]; selectedIdx=-1; hideInspector(); renderCollage(); });
+$('#btn-clear-canvas').addEventListener('click', () => {
+  saveState(); canvasCells=[]; selectedIdx=-1; hideInspector(); renderCollage(); });
 $('#btn-add-all').addEventListener('click', () => {
+  saveState();
   for (const item of library) canvasCells.push({ assetId: item.id, adj: defaultAdj(), fx:0, fy:0, fw:0, fh:0 });
   redistributeLayout();
   renderCollage();
@@ -1466,7 +1473,7 @@ async function runExportProcess(baseW, mimeType) {
       ctx.fillStyle = contrastColor;
       ctx.font = `900 ${tagPx}px Inter, sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('@IMAGE'+(i+1), px+pw/2, py+tagH/2);
+      const tagText = (tagMode === 'name' && asset.fileName) ? asset.fileName : ('@IMAGE' + (i + 1)); ctx.fillText(tagText, px+pw/2, py+tagH/2);
     }
 
     // Image
@@ -1910,7 +1917,8 @@ const i18n = {
     editor: "РЕДАКТОР",
     modeSelect: "Фото",
     modePan: "Холст",
-    uploadPhoto: "Выбрать фото"
+    uploadPhoto: "Выбрать фото",
+    fileName: "Имя"
   },
   en: {
     ratio: "RATIO",
@@ -1954,7 +1962,8 @@ const i18n = {
     editor: "EDITOR",
     modeSelect: "Photo",
     modePan: "Canvas",
-    uploadPhoto: "Upload Photo"
+    uploadPhoto: "Upload Photo",
+    fileName: "Name"
   }
 };
 
@@ -1993,7 +2002,8 @@ $$('.lang-btn').forEach(btn => {
         if (!item || !item.blob) continue;
         const thumbUrl = URL.createObjectURL(item.blob);
         const dims = await getImageDims(thumbUrl);
-        library.push({ id: item.id, blob: item.blob, thumbUrl, natW: dims.w, natH: dims.h });
+        const cleanName = item.fileName || (item.blob && item.blob.name ? item.blob.name.replace(/\.[^/.]+$/, '') : `img_${item.id.slice(0, 4)}`);
+        library.push({ id: item.id, blob: item.blob, thumbUrl, natW: dims.w, natH: dims.h, fileName: cleanName });
       }
     }
   } catch(e) {
@@ -2504,4 +2514,120 @@ window.addEventListener('orientationchange', () => {
   setTimeout(() => {
     updateFrameSize();
   }, 150);
+});
+
+
+/* ============================================================
+   UNDO / REDO SYSTEM (Ctrl+Z / Ctrl+Y) & TAG MODE SWITCHER
+============================================================ */
+const undoStack = [];
+const redoStack = [];
+const MAX_HISTORY = 30;
+
+function getCanvasStateSnapshot() {
+  return {
+    canvasCells: JSON.parse(JSON.stringify(canvasCells)),
+    selectedIdx: selectedIdx,
+    gap: gap,
+    radius: radius,
+    tagSize: tagSize,
+    tagEnabled: tagEnabled,
+    tagMode: tagMode,
+    strokeEnabled: strokeEnabled,
+    strokeWidth: strokeWidth,
+    frameColor: frameColor,
+    ratio: sRatio ? sRatio.value : '16:9'
+  };
+}
+
+function saveState() {
+  if (undoStack.length >= MAX_HISTORY) undoStack.shift();
+  undoStack.push(getCanvasStateSnapshot());
+  redoStack.length = 0;
+}
+
+function applyCanvasStateSnapshot(state) {
+  if (!state) return;
+  canvasCells = JSON.parse(JSON.stringify(state.canvasCells));
+  selectedIdx = state.selectedIdx;
+  gap = state.gap; if (sGap) { sGap.value = gap; if (nGap) nGap.value = gap; }
+  radius = state.radius; if (sRadius) { sRadius.value = radius; if (nRadius) nRadius.value = radius; }
+  tagSize = state.tagSize; if (sTagSize) { sTagSize.value = tagSize; if (nTagSize) nTagSize.value = tagSize; }
+  tagEnabled = state.tagEnabled; if (cTag) cTag.checked = tagEnabled;
+  tagMode = state.tagMode || 'tag';
+  updateTagModeUI();
+  strokeEnabled = state.strokeEnabled; if (cStroke) cStroke.checked = strokeEnabled;
+  strokeWidth = state.strokeWidth; if (sFrameStroke) { sFrameStroke.value = strokeWidth; if (nFrameStroke) nFrameStroke.value = strokeWidth; }
+  frameColor = state.frameColor; if (sFrameColor) { sFrameColor.value = frameColor; if (vFrameColor) vFrameColor.textContent = frameColor.toUpperCase(); }
+  if (state.ratio && sRatio && sRatio.value !== state.ratio) {
+    sRatio.value = state.ratio;
+    $$('.ratio-btn').forEach(b => b.classList.toggle('active', b.dataset.ratio === state.ratio));
+    updateFrameSize();
+  }
+  if (selectedIdx >= 0 && selectedIdx < canvasCells.length) {
+    showInspector(selectedIdx);
+  } else {
+    hideInspector();
+  }
+  renderCollage();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  const currentState = getCanvasStateSnapshot();
+  redoStack.push(currentState);
+  const prevState = undoStack.pop();
+  applyCanvasStateSnapshot(prevState);
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  const currentState = getCanvasStateSnapshot();
+  undoStack.push(currentState);
+  const nextState = redoStack.pop();
+  applyCanvasStateSnapshot(nextState);
+}
+
+function updateTagModeUI() {
+  const btnTag = $('#btn-tag-mode-tag');
+  const btnName = $('#btn-tag-mode-name');
+  if (btnTag) btnTag.classList.toggle('active', tagMode === 'tag');
+  if (btnName) btnName.classList.toggle('active', tagMode === 'name');
+}
+
+$('#btn-tag-mode-tag')?.addEventListener('click', () => {
+  if (tagMode === 'tag') return;
+  saveState();
+  tagMode = 'tag';
+  updateTagModeUI();
+  renderCollage();
+});
+
+$('#btn-tag-mode-name')?.addEventListener('click', () => {
+  if (tagMode === 'name') return;
+  saveState();
+  tagMode = 'name';
+  updateTagModeUI();
+  renderCollage();
+});
+
+$('#btn-undo')?.addEventListener('click', undo);
+$('#btn-redo')?.addEventListener('click', redo);
+
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.code === 'KeyZ')) {
+    if (e.shiftKey) {
+      e.preventDefault();
+      redo();
+    } else {
+      e.preventDefault();
+      undo();
+    }
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y' || e.code === 'KeyY')) {
+    e.preventDefault();
+    redo();
+  }
 });
