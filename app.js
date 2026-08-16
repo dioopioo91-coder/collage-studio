@@ -277,7 +277,7 @@ function redistributeLayout() {
   const fw = frame.offsetWidth || 1000;
   const fh = frame.offsetHeight || 800;
   const canvasRatio = fw / fh;
-  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  const tagH = tagEnabled ? Math.round(tagSize * 1.5 + 4) : 0;
   const isVertical = canvasRatio <= 1.05;
 
   // Gather individual asset aspect ratios (ir = width / height)
@@ -519,7 +519,7 @@ function renderCollage() {
   const fw = frame.offsetWidth;
   const fh = frame.offsetHeight;
   const contrastColor = getContrastColor(frameColor);
-  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  const tagH = tagEnabled ? Math.round(tagSize * 1.5 + 4) : 0;
   const activeStrokeWidth = strokeEnabled ? strokeWidth : 0;
 
   for (let i = 0; i < n; i++) {
@@ -832,8 +832,6 @@ collage.addEventListener('pointerdown', e => {
   if (handleEl) {
     interaction.mode = 'resize';
     interaction.resizeEdge = handleEl.dataset.edge;
-  } else if (tagEl) {
-    interaction.mode = 'move';
   } else {
     interaction.mode = 'swap';
   }
@@ -912,7 +910,7 @@ collage.addEventListener('pointermove', e => {
   const cell = canvasCells[interaction.cellIdx];
   const asset = library.find(a => a.id === cell.assetId);
   const ir = asset ? (asset.natW / asset.natH) : 1;
-  const tagH = tagEnabled ? Math.round(tagSize * 1.6 + 6) : 0;
+  const tagH = tagEnabled ? Math.round(tagSize * 1.5 + 4) : 0;
   const dfx = dx / fw, dfy = dy / fh;
 
   if (interaction.mode === 'move') {
@@ -961,14 +959,35 @@ collage.addEventListener('pointermove', e => {
     renderCollage();
 
   } else if (interaction.mode === 'swap') {
+    cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
+    cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
+
     const cellEls = $$('.cell', collage);
     let target = -1;
-    for (const el of cellEls) {
-      const idx = parseInt(el.dataset.idx);
-      if (idx === interaction.cellIdx) continue;
-      const r = el.getBoundingClientRect();
-      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-        target = idx; break;
+    const curCell = canvasCells[interaction.cellIdx];
+    const curCenterX = curCell.fx + curCell.fw / 2;
+    const curCenterY = curCell.fy + curCell.fh / 2;
+
+    for (let i = 0; i < canvasCells.length; i++) {
+      if (i === interaction.cellIdx) continue;
+      const other = canvasCells[i];
+      const el = collage.querySelector(`[data-idx="${i}"]`);
+      let isInside = false;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          isInside = true;
+        }
+      }
+      if (!isInside) {
+        if (curCenterX >= other.fx && curCenterX <= other.fx + other.fw &&
+            curCenterY >= other.fy && curCenterY <= other.fy + other.fh) {
+          isInside = true;
+        }
+      }
+      if (isInside) {
+        target = i;
+        break;
       }
     }
 
@@ -982,8 +1001,6 @@ collage.addEventListener('pointermove', e => {
     const activeEl = collage.querySelector(`[data-idx="${interaction.cellIdx}"] .cell-img`);
     if (activeEl) activeEl.classList.add('swapping-img');
 
-    cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
-    cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
     renderCollage();
   }
 });
@@ -1012,22 +1029,22 @@ collage.addEventListener('pointerup', e => {
     return;
   }
 
-  if (mode === 'swap' && wasDragged && target >= 0) {
+  if (mode === 'swap' && wasDragged && target >= 0 && target !== idx) {
     const a = idx, b = target;
     // Swap cells in array
     const temp = canvasCells[a];
     canvasCells[a] = canvasCells[b];
     canvasCells[b] = temp;
 
-    // Automatically recalculate optimal justified layout so both images reshape to their aspect ratios without black bars!
+    // Recalculate optimal justified layout so both cards reshape precisely to their image aspect ratios
     redistributeLayout();
     renderCollage();
     selectCell(b);
-  } else if (mode === 'swap' && wasDragged && target < 0) {
-    // Restore dragged position without wiping out other custom sizes
-    canvasCells[idx].fx = interaction.startFx;
-    canvasCells[idx].fy = interaction.startFy;
+  } else if (mode === 'swap' && wasDragged) {
+    // Snap back into place cleanly without black voids
+    redistributeLayout();
     renderCollage();
+    selectCell(idx);
   } else if (!wasDragged) {
     selectCell(idx);
   }
@@ -1588,22 +1605,27 @@ async function runExportProcess(baseW, mimeType) {
       }
       ctx.beginPath(); ctx.rect(nX, nY, nW, nH); ctx.clip();
 
+      const noiseTileSize = 128;
       const noiseCanvas = document.createElement('canvas');
-      noiseCanvas.width = 128; noiseCanvas.height = 128;
+      noiseCanvas.width = noiseTileSize;
+      noiseCanvas.height = noiseTileSize;
       const nCtx = noiseCanvas.getContext('2d');
-      const imgData = nCtx.createImageData(128, 128);
+      const imgData = nCtx.createImageData(noiseTileSize, noiseTileSize);
       const data = imgData.data;
-      const alpha = (nObj.amount / 100) * 180;
+      const alpha = Math.round((nObj.amount / 100) * 255);
+
       for (let k = 0; k < data.length; k += 4) {
         const v = Math.random() * 255;
-        data[k] = v; data[k+1] = v; data[k+2] = v;
-        data[k+3] = Math.random() < 0.5 ? alpha : alpha * 0.4;
+        data[k] = v;
+        data[k + 1] = v;
+        data[k + 2] = v;
+        data[k + 3] = alpha;
       }
       nCtx.putImageData(imgData, 0, 0);
 
       const pattern = ctx.createPattern(noiseCanvas, 'repeat');
       ctx.fillStyle = pattern;
-      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalCompositeOperation = 'source-over';
       ctx.fillRect(nX, nY, nW, nH);
       ctx.restore();
     }
