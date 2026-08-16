@@ -1624,9 +1624,15 @@ async function runExportProcess(baseW, mimeType) {
       nCtx.putImageData(imgData, 0, 0);
 
       const pattern = ctx.createPattern(noiseCanvas, 'repeat');
-      ctx.fillStyle = pattern;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillRect(nX, nY, nW, nH);
+      if (pattern) {
+        if (pattern.setTransform) {
+          const matrix = new DOMMatrix().scale(scale, scale);
+          pattern.setTransform(matrix);
+        }
+        ctx.fillStyle = pattern;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillRect(nX, nY, nW, nH);
+      }
       ctx.restore();
     }
 
@@ -2414,10 +2420,18 @@ async function exportSingleImage(cell) {
       ox = Math.round((adj.noise.box.x/100)*w);
       oy = Math.round((adj.noise.box.y/100)*h);
     }
+    const noiseScale = w / (editorFrame ? editorFrame.offsetWidth : 1000);
     const ni = new Image();
     ni.src = generateNoiseDataUrl(adj.noise.amount);
     await new Promise(r => { ni.onload = r; if (ni.complete) r(); });
-    ctx.drawImage(ni, ox, oy, bw, bh);
+    const pattern = ctx.createPattern(ni, 'repeat');
+    if (pattern) {
+      if (pattern.setTransform) {
+        pattern.setTransform(new DOMMatrix().scale(noiseScale, noiseScale));
+      }
+      ctx.fillStyle = pattern;
+      ctx.fillRect(ox, oy, bw, bh);
+    }
   }
 
   const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95));
