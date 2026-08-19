@@ -1070,6 +1070,8 @@ collage.addEventListener('pointerdown', e => {
   if (handleEl) {
     interaction.mode = 'resize';
     interaction.resizeEdge = handleEl.dataset.edge;
+  } else if (tagEl) {
+    interaction.mode = 'move';
   } else {
     interaction.mode = 'swap';
   }
@@ -1152,6 +1154,7 @@ collage.addEventListener('pointermove', e => {
   const dfx = dx / fw, dfy = dy / fh;
 
   if (interaction.mode === 'move') {
+    // Free repositioning — update position directly
     cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
     cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
     renderCollage();
@@ -1217,35 +1220,24 @@ collage.addEventListener('pointermove', e => {
     renderCollage();
 
   } else if (interaction.mode === 'swap') {
-    cell.fx = clamp(interaction.startFx + dfx, 0, 1 - cell.fw);
-    cell.fy = clamp(interaction.startFy + dfy, 0, 1 - cell.fh);
+    // Ultra smooth floating drag without tearing down the DOM
+    const draggedEl = collage.querySelector(`[data-idx="${interaction.cellIdx}"]`);
+    if (draggedEl) {
+      draggedEl.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      draggedEl.style.zIndex = '1000';
+    }
 
     const cellEls = $$('.cell', collage);
     let target = -1;
-    const curCell = canvasCells[interaction.cellIdx];
-    const curCenterX = curCell.fx + curCell.fw / 2;
-    const curCenterY = curCell.fy + curCell.fh / 2;
-
     for (let i = 0; i < canvasCells.length; i++) {
       if (i === interaction.cellIdx) continue;
-      const other = canvasCells[i];
       const el = collage.querySelector(`[data-idx="${i}"]`);
-      let isInside = false;
       if (el) {
         const r = el.getBoundingClientRect();
         if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-          isInside = true;
+          target = i;
+          break;
         }
-      }
-      if (!isInside) {
-        if (curCenterX >= other.fx && curCenterX <= other.fx + other.fw &&
-            curCenterY >= other.fy && curCenterY <= other.fy + other.fh) {
-          isInside = true;
-        }
-      }
-      if (isInside) {
-        target = i;
-        break;
       }
     }
 
@@ -1255,11 +1247,6 @@ collage.addEventListener('pointermove', e => {
       if (tEl) tEl.classList.add('drag-target');
     }
     interaction.swapTarget = target;
-
-    const activeEl = collage.querySelector(`[data-idx="${interaction.cellIdx}"] .cell-img`);
-    if (activeEl) activeEl.classList.add('swapping-img');
-
-    renderCollage();
   }
 });
 
@@ -1293,6 +1280,13 @@ collage.addEventListener('pointerup', e => {
     return;
   }
 
+  if (mode === 'move') {
+    // Moved to new position — keep it right there without calling redistributeLayout()
+    renderCollage();
+    selectCell(idx);
+    return;
+  }
+
   if (mode === 'swap' && wasDragged && target >= 0 && target !== idx) {
     const a = idx, b = target;
     // Swap cells in array
@@ -1300,13 +1294,17 @@ collage.addEventListener('pointerup', e => {
     canvasCells[a] = canvasCells[b];
     canvasCells[b] = temp;
 
-    // Recalculate optimal justified layout so both cards reshape precisely to their image aspect ratios
+    // Recalculate optimal layout
     redistributeLayout();
     renderCollage();
     selectCell(b);
   } else if (mode === 'swap' && wasDragged) {
-    // Snap back into place cleanly without black voids
-    redistributeLayout();
+    // Snap back cleanly to original position without reshuffling or voids
+    const cell = canvasCells[idx];
+    if (cell) {
+      cell.fx = interaction.startFx;
+      cell.fy = interaction.startFy;
+    }
     renderCollage();
     selectCell(idx);
   } else if (!wasDragged) {
@@ -1316,6 +1314,8 @@ collage.addEventListener('pointerup', e => {
   $$('.cell', collage).forEach(el => {
     el.classList.remove('drag-target');
     el.classList.remove('active-drag');
+    el.style.transform = '';
+    el.style.zIndex = '';
   });
   $$('.cell-img', collage).forEach(el => el.classList.remove('swapping-img'));
 });
