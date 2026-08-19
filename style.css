@@ -392,6 +392,37 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
   z-index: 2;
 }
 
+
+/* LIVE TEXT CELL ON CANVAS */
+.cell-text-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  background: #1a1a1e;
+  padding: 6%;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: "Inter","Noto Sans SC","Noto Sans KR","Noto Sans JP","Microsoft YaHei","PingFang SC",sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+  user-select: none;
+  cursor: default;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+.cell-text-content[contenteditable="true"] {
+  cursor: text !important;
+  user-select: auto !important;
+  outline: 2px solid var(--accent) !important;
+}
+
 /* SIDEBAR */
 .studio-sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
 .sidebar-section{display:flex;flex-direction:column}.library-section{flex:1;overflow:hidden}

@@ -177,76 +177,75 @@ function getImageDims(url) {
 }
 
 
-/* TEXT-TO-IMAGE GENERATOR */
-function generateTextImageBlob(text) {
+/* TEXT CARD — small thumbnail for sidebar + live text on canvas */
+function generateTextThumbBlob(text) {
   return new Promise(resolve => {
-    const W = 800, H = 800;
+    const W = 200, H = 200;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
-
-    // Dark background
     ctx.fillStyle = '#1a1a1e';
     ctx.fillRect(0, 0, W, H);
-
-    // Auto-size text to fit
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    const padding = 60;
-    const maxW = W - padding * 2;
-    const maxH = H - padding * 2;
-
-    // Try to find optimal font size with word-wrap
-    let fontSize = 120;
-    let lines = [];
-
-    while (fontSize >= 10) {
-      ctx.font = '700 ' + fontSize + 'px "Inter", "Noto Sans SC", "Noto Sans KR", "Noto Sans JP", "Microsoft YaHei", "PingFang SC", "Hiragino Sans", sans-serif';
-      lines = wrapText(ctx, text, maxW);
-      const totalH = lines.length * (fontSize * 1.3);
-      if (totalH <= maxH && lines.length <= 20) break;
-      fontSize -= 2;
+    const maxW = W - 20;
+    let fs = 32;
+    while (fs >= 8) {
+      ctx.font = '700 ' + fs + 'px Inter, sans-serif';
+      const lines = wrapTextLines(ctx, text, maxW);
+      if (lines.length * (fs * 1.3) <= H - 20) {
+        const lineH = fs * 1.3;
+        let y = (H - lines.length * lineH) / 2 + lineH / 2;
+        for (const l of lines) { ctx.fillText(l, W / 2, y); y += lineH; }
+        break;
+      }
+      fs -= 2;
     }
-
-    const lineH = fontSize * 1.3;
-    const totalTextH = lines.length * lineH;
-    let startY = (H - totalTextH) / 2 + lineH / 2;
-
-    for (const line of lines) {
-      ctx.fillText(line, W / 2, startY);
-      startY += lineH;
-    }
-
-    canvas.toBlob(blob => {
-      resolve({ blob, w: W, h: H });
-    }, 'image/png');
+    canvas.toBlob(blob => resolve({ blob, w: W, h: H }), 'image/png');
   });
 }
 
-function wrapText(ctx, text, maxWidth) {
-  // Handle newlines
-  const paragraphs = text.split('\n');
-  const allLines = [];
-  for (const para of paragraphs) {
-    if (para.trim() === '') { allLines.push(''); continue; }
-    // Character-by-character wrap (works for CJK, Latin, etc.)
-    let currentLine = '';
-    for (let i = 0; i < para.length; i++) {
-      const ch = para[i];
-      const testLine = currentLine + ch;
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && currentLine.length > 0) {
-        allLines.push(currentLine);
-        currentLine = ch;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    if (currentLine) allLines.push(currentLine);
+function wrapTextLines(ctx, text, maxWidth) {
+  const lines = [];
+  let cur = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\n') { lines.push(cur); cur = ''; continue; }
+    const test = cur + ch;
+    if (ctx.measureText(test).width > maxWidth && cur.length > 0) {
+      lines.push(cur); cur = ch;
+    } else { cur = test; }
   }
-  return allLines;
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/* Draw text directly on a canvas2d context (for export) */
+function drawTextOnCanvas(ctx, text, x, y, w, h) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = '#1a1a1e';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const fontStack = '"Inter","Noto Sans SC","Noto Sans KR","Noto Sans JP","Microsoft YaHei","PingFang SC","Hiragino Sans",sans-serif';
+  const pad = w * 0.06;
+  const maxW = w - pad * 2;
+  const maxH = h - pad * 2;
+  let fs = Math.round(h * 0.25);
+  let lines = [];
+  while (fs >= 8) {
+    ctx.font = '700 ' + fs + 'px ' + fontStack;
+    lines = wrapTextLines(ctx, text, maxW);
+    if (lines.length * (fs * 1.3) <= maxH) break;
+    fs -= 2;
+  }
+  const lineH = fs * 1.3;
+  let startY = y + (h - lines.length * lineH) / 2 + lineH / 2;
+  for (const l of lines) { ctx.fillText(l, x + w / 2, startY); startY += lineH; }
+  ctx.restore();
 }
 
 function generateNoiseDataUrl(amount) {
@@ -675,15 +674,59 @@ function renderCollage() {
     imgContainer.style.width = cw + 'px';
     imgContainer.style.height = ch + 'px';
 
-    const img = document.createElement('img');
-    img.className = 'cell-img';
-    img.src = asset.thumbUrl;
-    img.draggable = false;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    const filterVal = buildSVGFilter(cell, i);
-    if (filterVal) img.style.filter = filterVal;
-    imgContainer.appendChild(img);
+    if (asset.isTextCard && asset.textContent) {
+      // Live text cell — editable, NOT an image
+      const textDiv = document.createElement('div');
+      textDiv.className = 'cell-text-content';
+      textDiv.textContent = asset.textContent;
+      // Auto font size based on cell dimensions
+      const area = cw * ch;
+      const charCount = Math.max(1, asset.textContent.length);
+      let autoFs = Math.min(Math.round(Math.sqrt(area / charCount) * 0.85), Math.round(ch * 0.35));
+      autoFs = Math.max(8, Math.min(autoFs, 120));
+      textDiv.style.fontSize = autoFs + 'px';
+      // Double-click to edit
+      textDiv.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        textDiv.contentEditable = 'true';
+        textDiv.style.cursor = 'text';
+        textDiv.style.userSelect = 'auto';
+        textDiv.style.outline = '2px solid var(--accent)';
+        textDiv.focus();
+        const sel = window.getSelection(); sel.selectAllChildren(textDiv);
+      });
+      textDiv.addEventListener('blur', () => {
+        textDiv.contentEditable = 'false';
+        textDiv.style.cursor = 'default';
+        textDiv.style.userSelect = 'none';
+        textDiv.style.outline = 'none';
+        const newText = textDiv.textContent.trim();
+        if (newText && newText !== asset.textContent) {
+          asset.textContent = newText;
+          asset.fileName = newText.length > 20 ? newText.slice(0, 20) + '\u2026' : newText;
+          generateTextThumbBlob(newText).then(({ blob }) => {
+            if (asset.thumbUrl) URL.revokeObjectURL(asset.thumbUrl);
+            asset.thumbUrl = URL.createObjectURL(blob);
+            renderLibrary();
+          });
+        }
+      });
+      textDiv.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); textDiv.blur(); }
+        e.stopPropagation();
+      });
+      imgContainer.appendChild(textDiv);
+    } else {
+      const img = document.createElement('img');
+      img.className = 'cell-img';
+      img.src = asset.thumbUrl;
+      img.draggable = false;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      const filterVal = buildSVGFilter(cell, i);
+      if (filterVal) img.style.filter = filterVal;
+      imgContainer.appendChild(img);
+    }
 
     // Lines Overlay Canvas
     if (cell.adj.lines && cell.adj.lines.enabled) {
@@ -993,8 +1036,11 @@ collage.addEventListener('pointermove', e => {
 
   } else if (interaction.mode === 'resize') {
     const edge = interaction.resizeEdge;
+    const isTextCell = asset && asset.isTextCard;
     const startPx = interaction.startFw * fw;
+    const startPy = interaction.startFh * fh;
     let newPw = startPx;
+    let newPh;
 
     if (edge === 'se' || edge === 'ne') {
       newPw = Math.max(60, startPx + dx);
@@ -1002,9 +1048,20 @@ collage.addEventListener('pointermove', e => {
       newPw = Math.max(60, startPx - dx);
     }
 
+    if (isTextCell) {
+      // Free resize for text cells — width and height independent
+      if (edge === 'se' || edge === 'sw') {
+        newPh = Math.max(40, startPy + dy);
+      } else {
+        newPh = Math.max(40, startPy - dy);
+      }
+    } else {
+      // Aspect-ratio-locked resize for images
+      const newImgH = newPw / ir;
+      newPh = tagH + newImgH;
+    }
+
     const newFw = newPw / fw;
-    const newImgH = newPw / ir;
-    const newPh = tagH + newImgH;
     const newFh = newPh / fh;
 
     if (edge === 'se') {
@@ -1027,6 +1084,12 @@ collage.addEventListener('pointermove', e => {
       cell.fy = fy;
       cell.fw = newFw;
       cell.fh = newFh;
+    }
+
+    // Update natW/natH for text cells so layout respects the new shape
+    if (isTextCell) {
+      asset.natW = Math.round(cell.fw * fw);
+      asset.natH = Math.round(cell.fh * fh);
     }
 
     renderCollage();
@@ -1468,7 +1531,7 @@ async function addTextAsImage() {
   if (!text) return;
   textCardInput.value = '';
 
-  const { blob, w, h } = await generateTextImageBlob(text);
+  const { blob, w, h } = await generateTextThumbBlob(text);
   const id = 'txt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
   const thumbUrl = URL.createObjectURL(blob);
   const cleanName = text.length > 20 ? text.slice(0, 20) + '…' : text;
@@ -1632,8 +1695,6 @@ async function runExportProcess(baseW, mimeType) {
     const tagH = tagEnabled ? Math.round(tagPx*1.6 + 6*scale) : 0;
     const imgH = Math.max(10, ph - tagH);
 
-    const img = await loadImage(asset.blob instanceof Blob ? URL.createObjectURL(asset.blob) : asset.thumbUrl);
-
     ctx.save();
     roundRect(ctx, px, py, pw, ph, radPx);
     ctx.clip();
@@ -1648,12 +1709,18 @@ async function runExportProcess(baseW, mimeType) {
       const tagText = (tagMode === 'name' && asset.fileName) ? asset.fileName : ('@IMAGE' + (i + 1)); ctx.fillText(tagText, px+pw/2, py+tagH/2);
     }
 
-    // Image
     const imgX = px, imgY = py + tagH;
     const adj = cell.adj;
-    ctx.filter = `brightness(${adj.brightness}%) contrast(${adj.contrast}%)`;
-    drawContain(ctx, img, imgX, imgY, pw, imgH);
-    ctx.filter = 'none';
+
+    if (asset.isTextCard && asset.textContent) {
+      drawTextOnCanvas(ctx, asset.textContent, imgX, imgY, pw, imgH);
+    } else {
+      const img = await loadImage(asset.blob instanceof Blob ? URL.createObjectURL(asset.blob) : asset.thumbUrl);
+      ctx.filter = `brightness(${adj.brightness}%) contrast(${adj.contrast}%)`;
+      drawContain(ctx, img, imgX, imgY, pw, imgH);
+      ctx.filter = 'none';
+      if (asset.blob instanceof Blob) URL.revokeObjectURL(img.src);
+    }
 
     if (adj.r!==100||adj.g!==100||adj.b!==100) {
       ctx.globalCompositeOperation = 'multiply';
@@ -1747,7 +1814,6 @@ async function runExportProcess(baseW, mimeType) {
       ctx.beginPath(); roundRect(ctx, px, py, pw, ph, radPx); ctx.stroke();
     }
 
-    if (asset.blob instanceof Blob) URL.revokeObjectURL(img.src);
     await sleep(10);
   }
 
