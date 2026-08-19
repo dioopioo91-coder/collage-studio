@@ -183,26 +183,59 @@ const CJK_FONT_STACK = '"Inter", "Noto Sans SC", "Noto Sans KR", "Noto Sans JP",
 function wrapTextLines(ctx, text, maxWidth) {
   const paragraphs = text.split('\n');
   const allLines = [];
+
   for (const para of paragraphs) {
     if (para.length === 0) { allLines.push(''); continue; }
-    let cur = '';
-    for (let i = 0; i < para.length; i++) {
-      const ch = para[i];
-      const test = cur + ch;
-      if (ctx.measureText(test).width > maxWidth && cur.length > 0) {
-        allLines.push(cur);
-        cur = ch;
-      } else {
-        cur = test;
+
+    const isCJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/.test(para);
+
+    if (isCJK) {
+      let cur = '';
+      for (let i = 0; i < para.length; i++) {
+        const ch = para[i];
+        const test = cur + ch;
+        if (ctx.measureText(test).width > maxWidth && cur.length > 0) {
+          allLines.push(cur);
+          cur = ch;
+        } else {
+          cur = test;
+        }
       }
+      if (cur.length > 0) allLines.push(cur);
+    } else {
+      const words = para.split(' ');
+      let cur = '';
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const test = cur ? (cur + ' ' + word) : word;
+        if (ctx.measureText(test).width > maxWidth && cur.length > 0) {
+          allLines.push(cur);
+          if (ctx.measureText(word).width > maxWidth) {
+            let part = '';
+            for (let c = 0; c < word.length; c++) {
+              if (ctx.measureText(part + word[c]).width > maxWidth && part.length > 0) {
+                allLines.push(part);
+                part = word[c];
+              } else {
+                part += word[c];
+              }
+            }
+            cur = part;
+          } else {
+            cur = word;
+          }
+        } else {
+          cur = test;
+        }
+      }
+      if (cur.length > 0) allLines.push(cur);
     }
-    if (cur.length > 0) allLines.push(cur);
   }
   return allLines;
 }
 
-/* Fast binary-search to compute maximum font size that fits in width x height */
-function computeBestFontSize(text, maxW, maxH, minFs = 8, maxFs = 200) {
+/* Fast binary-search to compute maximum font size that fits in width x height with line height */
+function computeBestFontSize(text, maxW, maxH, minFs = 6, maxFs = 200) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   let low = minFs, high = maxFs;
@@ -212,7 +245,8 @@ function computeBestFontSize(text, maxW, maxH, minFs = 8, maxFs = 200) {
     const mid = Math.floor((low + high) / 2);
     ctx.font = '700 ' + mid + 'px ' + CJK_FONT_STACK;
     const lines = wrapTextLines(ctx, text, maxW);
-    const totalH = lines.length * (mid * 1.28);
+    const lineH = Math.round(mid * 1.35);
+    const totalH = lines.length * lineH;
     if (totalH <= maxH) {
       best = mid;
       low = mid + 1;
@@ -234,13 +268,13 @@ function generateTextThumbBlob(text) {
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const pad = 14;
-    const maxW = W - pad * 2, maxH = H - pad * 2;
-    const fs = computeBestFontSize(text, maxW, maxH, 8, 48);
+    const padX = 14, padY = 16;
+    const maxW = W - padX * 2, maxH = H - padY * 2;
+    const fs = computeBestFontSize(text, maxW, maxH, 6, 44);
     ctx.font = '700 ' + fs + 'px ' + CJK_FONT_STACK;
     const lines = wrapTextLines(ctx, text, maxW);
-    const lineH = fs * 1.28;
-    let startY = (H - lines.length * lineH) / 2 + lineH / 2;
+    const lineH = Math.round(fs * 1.35);
+    let startY = padY + (maxH - lines.length * lineH) / 2 + lineH / 2;
     for (const l of lines) {
       ctx.fillText(l, W / 2, startY);
       startY += lineH;
@@ -261,15 +295,15 @@ function drawTextOnCanvas(ctx, text, x, y, w, h) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const padX = w * 0.06;
-  const padY = h * 0.06;
+  const padX = Math.max(14, Math.round(w * 0.05));
+  const padY = Math.max(16, Math.round(h * 0.06));
   const maxW = Math.max(10, w - padX * 2);
   const maxH = Math.max(10, h - padY * 2);
-  const fs = computeBestFontSize(text, maxW, maxH, 8, Math.round(h * 0.5));
+  const fs = computeBestFontSize(text, maxW, maxH, 6, Math.round(h * 0.5));
   ctx.font = '700 ' + fs + 'px ' + CJK_FONT_STACK;
   const lines = wrapTextLines(ctx, text, maxW);
-  const lineH = fs * 1.28;
-  let startY = y + (h - lines.length * lineH) / 2 + lineH / 2;
+  const lineH = Math.round(fs * 1.35);
+  let startY = y + padY + (maxH - lines.length * lineH) / 2 + lineH / 2;
   for (const l of lines) {
     ctx.fillText(l, x + w / 2, startY);
     startY += lineH;
@@ -706,88 +740,104 @@ function renderCollage() {
     imgContainer.style.height = ch + 'px';
 
     if (asset.isTextCard && asset.textContent) {
-      // Live text cell — editable, NOT an image
-      const textDiv = document.createElement('div');
-      textDiv.className = 'cell-text-content';
-      textDiv.textContent = asset.textContent;
-      textDiv.style.width = '100%';
-      textDiv.style.height = '100%';
-      textDiv.style.display = 'flex';
-      textDiv.style.alignItems = 'center';
-      textDiv.style.justifyContent = 'center';
-      textDiv.style.textAlign = 'center';
-      textDiv.style.color = '#fff';
-      textDiv.style.background = '#1a1a1e';
-      textDiv.style.padding = '6%';
-      textDiv.style.boxSizing = 'border-box';
-      textDiv.style.overflow = 'hidden';
-      textDiv.style.wordBreak = 'break-word';
-      textDiv.style.whiteSpace = 'pre-wrap';
-      textDiv.style.fontFamily = CJK_FONT_STACK;
-      textDiv.style.fontWeight = '700';
-      textDiv.style.lineHeight = '1.28';
-      textDiv.style.userSelect = 'none';
-      textDiv.style.cursor = 'default';
-
-      // Dynamic font size fitting to cell width and height
-      const padX = cw * 0.06;
-      const padY = ch * 0.06;
-      const maxW = Math.max(10, cw - padX * 2);
-      const maxH = Math.max(10, ch - padY * 2);
-      const autoFs = computeBestFontSize(asset.textContent, maxW, maxH, 8, Math.round(ch * 0.5));
-      textDiv.style.fontSize = autoFs + 'px';
-
-      // Double-click to edit on canvas
-      textDiv.addEventListener('dblclick', e => {
-        e.stopPropagation();
-        textDiv.contentEditable = 'true';
-        textDiv.style.cursor = 'text';
-        textDiv.style.userSelect = 'auto';
-        textDiv.style.outline = '2px solid var(--accent)';
-        textDiv.focus();
-        const sel = window.getSelection();
-        sel.selectAllChildren(textDiv);
-      });
-
-      textDiv.addEventListener('blur', () => {
-        textDiv.contentEditable = 'false';
-        textDiv.style.cursor = 'default';
+      if (interaction.active && interaction.mode === 'resize') {
+        // Lightweight skeleton stripes during active resize — completely eliminates lag!
+        const skelDiv = document.createElement('div');
+        skelDiv.className = 'cell-text-skeleton';
+        const numLines = Math.max(3, Math.min(14, Math.floor(ch / 22)));
+        for (let s = 0; s < numLines; s++) {
+          const sLine = document.createElement('div');
+          sLine.className = 'skeleton-line';
+          if (s === numLines - 1) sLine.style.width = '45%';
+          else if (s % 2 === 1) sLine.style.width = '82%';
+          skelDiv.appendChild(sLine);
+        }
+        imgContainer.appendChild(skelDiv);
+      } else {
+        // Live text cell with precise font fitting & comfortable top/bottom padding
+        const textDiv = document.createElement('div');
+        textDiv.className = 'cell-text-content';
+        textDiv.textContent = asset.textContent;
+        textDiv.style.width = '100%';
+        textDiv.style.height = '100%';
+        textDiv.style.display = 'flex';
+        textDiv.style.alignItems = 'center';
+        textDiv.style.justifyContent = 'center';
+        textDiv.style.textAlign = 'center';
+        textDiv.style.color = '#fff';
+        textDiv.style.background = '#1a1a1e';
+        textDiv.style.boxSizing = 'border-box';
+        textDiv.style.overflow = 'hidden';
+        textDiv.style.wordBreak = 'break-word';
+        textDiv.style.whiteSpace = 'pre-wrap';
+        textDiv.style.fontFamily = CJK_FONT_STACK;
+        textDiv.style.fontWeight = '700';
+        textDiv.style.lineHeight = '1.35';
         textDiv.style.userSelect = 'none';
-        textDiv.style.outline = 'none';
-        const newText = textDiv.textContent.trim();
-        if (newText && newText !== asset.textContent) {
-          saveState();
-          asset.textContent = newText;
-          asset.fileName = newText.length > 20 ? newText.slice(0, 20) + '…' : newText;
-          generateTextThumbBlob(newText).then(async ({ blob }) => {
-            if (asset.thumbUrl) URL.revokeObjectURL(asset.thumbUrl);
-            asset.thumbUrl = URL.createObjectURL(blob);
-            asset.blob = blob;
-            try {
-              await dbPut({
-                id: asset.id,
-                blob: asset.blob,
-                fileName: asset.fileName,
-                isTextCard: true,
-                textContent: asset.textContent,
-                natW: asset.natW,
-                natH: asset.natH
-              });
-            } catch(e) { console.warn('DB update text:', e); }
-            renderLibrary();
-          });
-        }
-      });
+        textDiv.style.cursor = 'default';
 
-      textDiv.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          textDiv.blur();
-        }
-        e.stopPropagation();
-      });
+        // Generous vertical & horizontal padding
+        const padX = Math.max(14, Math.round(cw * 0.05));
+        const padY = Math.max(16, Math.round(ch * 0.06));
+        textDiv.style.padding = `${padY}px ${padX}px`;
 
-      imgContainer.appendChild(textDiv);
+        const maxW = Math.max(10, cw - padX * 2);
+        const maxH = Math.max(10, ch - padY * 2);
+        const autoFs = computeBestFontSize(asset.textContent, maxW, maxH, 6, Math.round(ch * 0.5));
+        textDiv.style.fontSize = autoFs + 'px';
+
+        // Double-click to edit on canvas
+        textDiv.addEventListener('dblclick', e => {
+          e.stopPropagation();
+          textDiv.contentEditable = 'true';
+          textDiv.style.cursor = 'text';
+          textDiv.style.userSelect = 'auto';
+          textDiv.style.outline = '2px solid var(--accent)';
+          textDiv.focus();
+          const sel = window.getSelection();
+          sel.selectAllChildren(textDiv);
+        });
+
+        textDiv.addEventListener('blur', () => {
+          textDiv.contentEditable = 'false';
+          textDiv.style.cursor = 'default';
+          textDiv.style.userSelect = 'none';
+          textDiv.style.outline = 'none';
+          const newText = textDiv.textContent.trim();
+          if (newText && newText !== asset.textContent) {
+            saveState();
+            asset.textContent = newText;
+            asset.fileName = newText.length > 20 ? newText.slice(0, 20) + '…' : newText;
+            generateTextThumbBlob(newText).then(async ({ blob }) => {
+              if (asset.thumbUrl) URL.revokeObjectURL(asset.thumbUrl);
+              asset.thumbUrl = URL.createObjectURL(blob);
+              asset.blob = blob;
+              try {
+                await dbPut({
+                  id: asset.id,
+                  blob: asset.blob,
+                  fileName: asset.fileName,
+                  isTextCard: true,
+                  textContent: asset.textContent,
+                  natW: asset.natW,
+                  natH: asset.natH
+                });
+              } catch(e) { console.warn('DB update text:', e); }
+              renderLibrary();
+            });
+          }
+        });
+
+        textDiv.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            textDiv.blur();
+          }
+          e.stopPropagation();
+        });
+
+        imgContainer.appendChild(textDiv);
+      }
     } else {
       const img = document.createElement('img');
       img.className = 'cell-img';
@@ -1234,6 +1284,12 @@ collage.addEventListener('pointerup', e => {
   interaction.active = false;
 
   if (mode === 'rb_move' || mode === 'rb_resize') {
+    return;
+  }
+
+  if (mode === 'resize') {
+    renderCollage();
+    selectCell(idx);
     return;
   }
 

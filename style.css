@@ -393,6 +393,26 @@ html,body{width:100%;height:100%;background:var(--bg-app);color:var(--text-main)
 }
 
 
+
+/* SKELETON PLACEHOLDER DURING RESIZE */
+.cell-text-skeleton {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1e;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.skeleton-line {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  width: 100%;
+}
+
 /* LIVE TEXT CELL ON CANVAS */
 .cell-text-content {
   position: relative;
