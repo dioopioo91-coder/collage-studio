@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=44">
+  <link rel="stylesheet" href="style.css?v=45">
 </head>
 <body>
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none"><defs></defs></svg>
@@ -150,6 +150,10 @@
           </div>
           <div class="upload-dropzone">
             <label class="btn btn-upload" id="btn-upload" for="global-file-input" data-i18n="upload">Загрузить фото</label>
+          </div>
+          <div class="text-card-input-row">
+            <input type="text" id="text-card-input" class="text-card-field" placeholder="Введите текст..." data-i18n-placeholder="textPlaceholder">
+            <button class="btn btn-text-add" id="btn-add-text" title="Add text card">T+</button>
           </div>
           <div class="library-scroll">
             <div class="library-grid" id="library-grid"></div>
@@ -334,6 +338,6 @@
   <!-- Global file input: visually hidden but accessible to <label for> clicks -->
   <input type="file" id="global-file-input" multiple style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">
 
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
 </body>
 </html>

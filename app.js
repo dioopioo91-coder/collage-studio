@@ -176,6 +176,79 @@ function getImageDims(url) {
   });
 }
 
+
+/* TEXT-TO-IMAGE GENERATOR */
+function generateTextImageBlob(text) {
+  return new Promise(resolve => {
+    const W = 800, H = 800;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Dark background
+    ctx.fillStyle = '#1a1a1e';
+    ctx.fillRect(0, 0, W, H);
+
+    // Auto-size text to fit
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const padding = 60;
+    const maxW = W - padding * 2;
+    const maxH = H - padding * 2;
+
+    // Try to find optimal font size with word-wrap
+    let fontSize = 120;
+    let lines = [];
+
+    while (fontSize >= 10) {
+      ctx.font = '700 ' + fontSize + 'px "Inter", "Noto Sans SC", "Noto Sans KR", "Noto Sans JP", "Microsoft YaHei", "PingFang SC", "Hiragino Sans", sans-serif';
+      lines = wrapText(ctx, text, maxW);
+      const totalH = lines.length * (fontSize * 1.3);
+      if (totalH <= maxH && lines.length <= 20) break;
+      fontSize -= 2;
+    }
+
+    const lineH = fontSize * 1.3;
+    const totalTextH = lines.length * lineH;
+    let startY = (H - totalTextH) / 2 + lineH / 2;
+
+    for (const line of lines) {
+      ctx.fillText(line, W / 2, startY);
+      startY += lineH;
+    }
+
+    canvas.toBlob(blob => {
+      resolve({ blob, w: W, h: H });
+    }, 'image/png');
+  });
+}
+
+function wrapText(ctx, text, maxWidth) {
+  // Handle newlines
+  const paragraphs = text.split('\n');
+  const allLines = [];
+  for (const para of paragraphs) {
+    if (para.trim() === '') { allLines.push(''); continue; }
+    // Character-by-character wrap (works for CJK, Latin, etc.)
+    let currentLine = '';
+    for (let i = 0; i < para.length; i++) {
+      const ch = para[i];
+      const testLine = currentLine + ch;
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && currentLine.length > 0) {
+        allLines.push(currentLine);
+        currentLine = ch;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) allLines.push(currentLine);
+  }
+  return allLines;
+}
+
 function generateNoiseDataUrl(amount) {
   const canvas = document.createElement('canvas');
   canvas.width = 128; canvas.height = 128;
@@ -1306,7 +1379,7 @@ function renderLibrary() {
   libCount.textContent = library.length;
   for (const item of library) {
     const card = document.createElement('div');
-    card.className = 'lib-card';
+    card.className = 'lib-card' + (item.isTextCard ? ' text-card' : '');
     card.draggable = true;
     card.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-asset-id', item.id);
@@ -1318,6 +1391,13 @@ function renderLibrary() {
     img.src = item.thumbUrl; img.loading = 'lazy';
     img.draggable = false;
     card.appendChild(img);
+
+    if (item.isTextCard) {
+      const badge = document.createElement('span');
+      badge.className = 'lib-text-badge';
+      badge.textContent = 'T';
+      card.appendChild(badge);
+    }
 
     const del = document.createElement('button');
     del.className = 'lib-del-btn'; del.textContent = '✕';
@@ -1378,6 +1458,29 @@ if (globalFileInput) {
     if (files.length > 0) handleFiles(files);
   });
 }
+
+/* TEXT CARD — add text as image to library */
+const textCardInput = $('#text-card-input');
+const btnAddText = $('#btn-add-text');
+
+async function addTextAsImage() {
+  const text = textCardInput ? textCardInput.value.trim() : '';
+  if (!text) return;
+  textCardInput.value = '';
+
+  const { blob, w, h } = await generateTextImageBlob(text);
+  const id = 'txt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
+  const thumbUrl = URL.createObjectURL(blob);
+  const cleanName = text.length > 20 ? text.slice(0, 20) + '…' : text;
+  library.push({ id, blob, thumbUrl, natW: w, natH: h, fileName: cleanName, isTextCard: true, textContent: text });
+  try { await dbPut({ id, blob }); } catch(e) { console.warn('DB text save:', e); }
+  renderLibrary();
+}
+
+if (btnAddText) btnAddText.addEventListener('click', addTextAsImage);
+if (textCardInput) textCardInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addTextAsImage(); }
+});
 
 /* DRAG & DROP ON CANVAS */
 viewport.addEventListener('dragover', e => {
@@ -1999,7 +2102,8 @@ const i18n = {
     modePan: "Холст",
     uploadPhoto: "Выбрать фото",
     tagBadge: "@ТЕГ",
-    fileName: "ИМЯ"
+    fileName: "ИМЯ",
+    textPlaceholder: "Введите текст..."
   },
   en: {
     ratio: "RATIO",
@@ -2045,7 +2149,8 @@ const i18n = {
     modePan: "Canvas",
     uploadPhoto: "Upload Photo",
     tagBadge: "@TAG",
-    fileName: "NAME"
+    fileName: "NAME",
+    textPlaceholder: "Enter text..."
   }
 };
 
@@ -2064,6 +2169,12 @@ function applyLanguage(lang) {
     const key = el.dataset.i18n;
     if (dict[key]) {
       el.textContent = dict[key];
+    }
+  });
+  $$('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (dict[key]) {
+      el.placeholder = dict[key];
     }
   });
 }
